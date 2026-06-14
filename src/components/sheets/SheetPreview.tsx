@@ -102,10 +102,10 @@ export const SheetPreview = ({
   };
 
   return (
-    <div className="overflow-hidden border border-zinc-800 bg-zinc-950">
-      <div className="grid gap-3 border-b border-zinc-800 bg-zinc-900 p-3 lg:grid-cols-[1fr_auto] lg:items-center">
+    <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
+      <div className="grid gap-3 border-b border-zinc-800 bg-zinc-900/90 p-3 lg:grid-cols-[1fr_auto] lg:items-center">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center bg-emerald-700 text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-600 text-white">
             <Table className="h-4 w-4" />
           </div>
           <div>
@@ -118,14 +118,14 @@ export const SheetPreview = ({
         </Button>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto border-b border-zinc-800 bg-black p-2">
+      <div className="flex gap-1 overflow-x-auto border-b border-zinc-800 bg-black/75 p-2">
         {tabs.map((tab) => (
           <button
             key={tab.name}
             type="button"
             onClick={() => setActiveTab(tab.name)}
-            className={`whitespace-nowrap border px-3 py-1.5 text-[11px] font-semibold transition ${
-              activeTab === tab.name ? "border-white bg-white text-black" : "border-zinc-800 text-zinc-500 hover:text-zinc-200"
+            className={`whitespace-nowrap rounded-md border px-3 py-1.5 text-[11px] font-semibold transition ${
+              activeTab === tab.name ? "border-amber-300 bg-amber-300 text-zinc-950" : "border-zinc-800 text-zinc-500 hover:text-zinc-200"
             }`}
           >
             {tab.name}
@@ -151,7 +151,7 @@ export const SheetPreview = ({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-900 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-900/90 p-3">
         <p className="text-xs leading-5 text-zinc-500">
           Final MVP output should generate this as a styled Google Sheet with profile, tests, weekly plan, notes, zones, checkpoints, and readiness.
         </p>
@@ -165,7 +165,7 @@ export const SheetPreview = ({
           <Button variant="secondary" onClick={downloadExcelWorkbook}>
             Download Excel workbook
           </Button>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase text-zinc-500">
             <FileSpreadsheet className="h-4 w-4" /> OTA-style structure, Black Bear logic
           </div>
         </div>
@@ -196,7 +196,7 @@ function WeekSheet({ rows, languageMode }: { rows: ProgramDay[]; languageMode: L
         <col className="w-[260px]" />
         <col className="w-[260px]" />
       </colgroup>
-      <thead className="sticky top-0 bg-zinc-100 text-[10px] uppercase tracking-[0.12em] text-zinc-600">
+      <thead className="sticky top-0 bg-zinc-100 text-[10px] uppercase text-zinc-600">
         <tr>
           {[
             "Day",
@@ -296,7 +296,7 @@ function InfoSheet({
 
   return (
     <table className="w-full min-w-[860px] border-collapse text-sm">
-      <thead className="sticky top-0 bg-zinc-100 text-[10px] uppercase tracking-[0.12em] text-zinc-600">
+      <thead className="sticky top-0 bg-zinc-100 text-[10px] uppercase text-zinc-600">
         <tr>
           <th className="w-[220px] border border-zinc-300 px-2 py-2 text-left">Field</th>
           <th className="border border-zinc-300 px-2 py-2 text-left">Value</th>

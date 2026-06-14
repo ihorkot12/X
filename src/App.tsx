@@ -1,10 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  BarChart3,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
+  CheckCircle2,
+  Clock3,
   Download,
   FileSpreadsheet,
+  Flame,
   Info,
   Layout,
   LogOut,
@@ -15,6 +20,7 @@ import {
   Upload,
   User,
   UserPlus,
+  Users,
 } from "lucide-react";
 import {
   Assessment,
@@ -773,11 +779,17 @@ export default function App() {
           }),
         }),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Gemini request failed.");
-      setAiResponse(payload.text || "Gemini returned an empty response.");
+      const contentType = response.headers.get("content-type") || "";
+      const payload = contentType.includes("application/json") ? await response.json() : null;
+      if (!response.ok) throw new Error(payload?.error || "Gemini request failed.");
+      setAiResponse(payload?.text || "Gemini returned an empty response.");
     } catch (error) {
-      setAiError(error instanceof Error ? error.message : "Gemini request failed.");
+      const message = error instanceof Error ? error.message : "Gemini request failed.";
+      setAiError(
+        message.includes("Unexpected end of JSON") || message.includes("Failed to fetch")
+          ? "Gemini is temporarily unavailable. The training plan still works; try AI coach notes again after the backend is available."
+          : message,
+      );
     } finally {
       setAiLoading(false);
     }
@@ -889,16 +901,16 @@ export default function App() {
   }, [dataLoaded, account?.id, allSavedAthletes, allSavedPrograms, allTrainingLogs, allTeams, allMemberships, allTestHistory]);
 
   return (
-    <div className="min-h-screen bg-black px-4 py-5 text-zinc-300 md:px-8">
-      <div className="mx-auto grid max-w-7xl gap-6">
-        <header className="grid gap-4 border-b border-zinc-900 pb-4 lg:grid-cols-[280px_1fr] lg:items-center">
+    <div className="min-h-screen px-3 py-4 text-zinc-300 sm:px-5 md:px-8">
+      <div className="mx-auto grid max-w-7xl gap-5">
+        <header className="sticky top-0 z-20 grid gap-4 rounded-lg border border-zinc-800/80 bg-black/82 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur lg:grid-cols-[300px_1fr] lg:items-center">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center bg-white text-black">
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-300 text-zinc-950 shadow-[0_12px_30px_rgba(252,211,77,0.18)]">
               <Shield className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-lg font-black uppercase leading-none tracking-tight text-white">Black Bear</h1>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500">Performance S&C</p>
+              <h1 className="text-lg font-black uppercase leading-none tracking-normal text-white">Black Bear</h1>
+              <p className="text-[10px] font-bold uppercase text-zinc-500">Performance S&C</p>
             </div>
           </div>
           <nav className="grid grid-cols-4 gap-1 md:grid-cols-7">
@@ -915,13 +927,13 @@ export default function App() {
                   onClick={() => goToStep(targetStep)}
                   disabled={!enabled}
                   aria-disabled={!enabled}
-                  className={`flex min-h-10 items-center justify-center gap-2 border px-2 text-[10px] font-bold uppercase tracking-[0.14em] transition ${
+                  className={`flex min-h-10 items-center justify-center gap-2 rounded-md border px-2 text-[10px] font-bold uppercase transition ${
                     active
-                      ? "border-white bg-white text-black"
+                      ? "border-amber-300 bg-amber-300 text-zinc-950"
                       : completed
-                        ? "border-zinc-700 bg-zinc-950 text-zinc-300"
+                        ? "border-emerald-900/70 bg-emerald-950/30 text-emerald-200"
                         : enabled
-                          ? "border-zinc-900 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300"
+                          ? "border-zinc-800 bg-zinc-950/70 text-zinc-500 hover:border-zinc-600 hover:text-zinc-200"
                           : "cursor-not-allowed border-zinc-950 text-zinc-700 opacity-50"
                   }`}
                 >
@@ -945,9 +957,29 @@ export default function App() {
           />
 
           {step === 1 && (
-            <ScreenShell eyebrow="Step 1" title="Start: account, role, language." description="Set who is creating the plan, then continue to the fighter profile. Saved athletes and logs stay attached to this account.">
+            <ScreenShell eyebrow="Step 1" title="Control room" description="Log in, choose coach or athlete mode, then continue to the fighter profile. Stable athlete data stays saved so the next block starts faster.">
               <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-                <Card className="grid gap-5">
+                <Card className="premium-reveal grid gap-5 border-amber-300/20 bg-[linear-gradient(145deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))]">
+                  <div className="grid gap-3 border-b border-zinc-800/80 pb-4 md:grid-cols-[1fr_auto] md:items-end">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase text-amber-300">Combat sports training builder</p>
+                      <h2 className="mt-2 max-w-3xl text-2xl font-black tracking-normal text-white md:text-4xl">Build the plan once. Run the training week from the portal.</h2>
+                      <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+                        Ukrainian and English outputs, coach teams, athlete logs, checkpoint tests, and OTA-style export in one workflow.
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <StatusPill tone="gold" label="Combat S&C" />
+                        <StatusPill tone="green" label="Coach + athlete portal" />
+                        <StatusPill tone="red" label="Risk-aware programming" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <StatBox label="Weeks" value="4-12" />
+                      <StatBox label="Roles" value="3" />
+                      <StatBox label="Export" value="XLS" />
+                    </div>
+                  </div>
+                  <PremiumWorkflow />
                   <SegmentedControl
                     label="Language mode"
                     value={languageMode}
@@ -969,7 +1001,7 @@ export default function App() {
                       { label: "Admin", value: "admin" },
                     ]}
                   />
-                  <p className="text-xs leading-5 text-zinc-500">
+                  <p className="rounded-md border border-zinc-800 bg-black/45 p-3 text-xs leading-5 text-zinc-400">
                     Athlete mode is for one fighter. Coach mode keeps teams and logs. Admin mode is a local MVP overview for accounts, programs, and system checks.
                   </p>
                   <AccountPanel
@@ -1032,7 +1064,7 @@ export default function App() {
           )}
 
           {step === 2 && (
-            <ScreenShell eyebrow="Step 2" title="Classify the fighter first." description="The program starts from combat profile, then sport details and weekly combat stress.">
+            <ScreenShell eyebrow="Step 2" title="Fighter type" description="Choose whether the plan should bias grappling, striking, or hybrid MMA demands before loading weekly stress.">
               <div className="grid gap-5">
                 <Card className="grid gap-4">
                   <SegmentedControl
@@ -1050,15 +1082,15 @@ export default function App() {
                           type="button"
                           aria-label={`Select combat profile: ${PROFILE_COPY[profile].title}`}
                           onClick={() => setCombatProfile(profile)}
-                          className={`grid gap-3 border p-4 text-left transition ${
-                            active ? "border-white bg-white text-black" : "border-zinc-800 bg-black text-zinc-400 hover:border-zinc-500"
+                          className={`grid min-h-[180px] gap-3 rounded-lg border p-4 text-left transition ${
+                            active ? "border-amber-300 bg-amber-300 text-zinc-950 shadow-[0_16px_42px_rgba(252,211,77,0.16)]" : "border-zinc-800 bg-black/60 text-zinc-400 hover:border-zinc-500"
                           }`}
                         >
-                          <h3 className="text-sm font-black uppercase tracking-[0.14em]">{PROFILE_COPY[profile].title}</h3>
+                          <h3 className="text-sm font-black uppercase">{PROFILE_COPY[profile].title}</h3>
                           <p className={`text-sm leading-5 ${active ? "text-zinc-700" : "text-zinc-500"}`}>{PROFILE_COPY[profile].summary}</p>
                           <div className="flex flex-wrap gap-1">
                             {PROFILE_COPY[profile].emphasis.map((tag) => (
-                              <span key={tag} className={`border px-2 py-1 text-[10px] font-bold uppercase ${active ? "border-zinc-300" : "border-zinc-800"}`}>
+                              <span key={tag} className={`rounded border px-2 py-1 text-[10px] font-bold uppercase ${active ? "border-zinc-900/20 bg-zinc-950/5" : "border-zinc-800 bg-zinc-950/60"}`}>
                                 {tag}
                               </span>
                             ))}
@@ -1069,7 +1101,7 @@ export default function App() {
                   </div>
                 </Card>
                 <Card className="grid gap-4">
-                  <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Weekly combat load</h3>
+                  <h3 className="text-sm font-bold uppercase text-white">Weekly combat load</h3>
                   <div className="grid gap-4 md:grid-cols-5">
                     <Input label="Striking" type="number" value={combatLoad.strikingSessions} onChange={(value) => updateCombatLoad("strikingSessions", value)} min={0} />
                     <Input label="Grappling" type="number" value={combatLoad.grapplingSessions} onChange={(value) => updateCombatLoad("grapplingSessions", value)} min={0} />
@@ -1077,7 +1109,7 @@ export default function App() {
                     <Input label="Hard wrestling" type="number" value={combatLoad.hardGrapplingDays} onChange={(value) => updateCombatLoad("hardGrapplingDays", value)} min={0} />
                     <Input label="Technical" type="number" value={combatLoad.technicalSessions} onChange={(value) => updateCombatLoad("technicalSessions", value)} min={0} />
                   </div>
-                  <p className="border-l-2 border-zinc-700 pl-3 text-sm leading-6 text-zinc-400">
+                  <p className="rounded-md border border-amber-300/20 bg-amber-300/5 p-3 text-sm leading-6 text-zinc-300">
                     {profileSummary.title}: {profileSummary.summary}
                   </p>
                 </Card>
@@ -1087,7 +1119,7 @@ export default function App() {
           )}
 
           {step === 3 && (
-            <ScreenShell eyebrow="Step 3" title="Build the athlete profile." description="Only collect what changes training decisions: level, equipment, and pain flags.">
+            <ScreenShell eyebrow="Step 3" title="Athlete profile" description="Save stable data once: age, sex, training age, equipment, and injury flags. Tests and readiness stay editable each cycle.">
               <div className="grid gap-5">
                 <Card className="grid gap-4 md:grid-cols-4">
                   <Input label="Name" value={athleteProfile.name} onChange={(value) => updateAthleteProfile({ name: String(value) })} placeholder="Athlete name" />
@@ -1130,7 +1162,7 @@ export default function App() {
                 <SavedProgramsPanel programs={savedPrograms} onLoad={loadProgramRecord} onDelete={deleteProgramRecord} />
                 <Checklist title="Equipment" items={EQUIPMENT} selected={athleteProfile.equipment} onToggle={(value) => toggleListValue("equipment", value)} />
                 <Checklist title="Pain / risk flags" items={PAIN_AREAS} selected={athleteProfile.painAreas} onToggle={(value) => toggleListValue("painAreas", value)} />
-                <Card className="border-zinc-800 bg-zinc-950 text-sm leading-6 text-zinc-400">
+                <Card className="border-amber-300/20 bg-amber-300/5 text-sm leading-6 text-zinc-300">
                   This tool does not diagnose injuries. Acute pain, neurological symptoms, concussion signs, chest pain, or severe dizziness require qualified medical assessment.
                 </Card>
                 <div className="flex flex-wrap justify-between gap-3">
@@ -1144,7 +1176,7 @@ export default function App() {
           )}
 
           {step === 4 && (
-            <ScreenShell eyebrow="Step 4" title="Set the training block." description="The first MVP supports 4, 8, and 12 week outputs. Every fourth week is checkpoint/deload.">
+            <ScreenShell eyebrow="Step 4" title="Training block" description="Pick duration, S&C frequency, session length, camp phase, and competition date. Every fourth week becomes checkpoint/deload.">
               <div className="grid gap-5">
                 <Card className="grid gap-5">
                   <SegmentedControl
@@ -1201,7 +1233,7 @@ export default function App() {
           )}
 
           {step === 5 && (
-            <ScreenShell eyebrow="Step 5" title="Enter assessment numbers." description="These inputs are enough for the first rule-based engine and sheet output preview.">
+            <ScreenShell eyebrow="Step 5" title="Assessment" description="Enter tests, working weights, power markers, conditioning numbers, and readiness. The engine turns this into a practical weekly plan.">
               <div className="grid gap-5">
                 <Card>
                   <AssessmentInputs assessment={assessment} setAssessment={setAssessment} />
@@ -1220,7 +1252,7 @@ export default function App() {
                     <ChevronLeft className="h-4 w-4" /> Back
                   </Button>
                   <Button onClick={handleGenerate} className="px-8">
-                    Generate Program
+                    Generate program
                   </Button>
                 </div>
               </div>
@@ -1228,7 +1260,7 @@ export default function App() {
           )}
 
           {step === 6 && program && (
-            <ScreenShell eyebrow="Step 6" title="Review the generated program." description={program.summary}>
+            <ScreenShell eyebrow="Step 6" title="Training plan" description={program.summary}>
               <div className="grid gap-5">
                 <ProgramDashboard program={program} languageMode={languageMode} />
                 <GeminiPanel
@@ -1253,7 +1285,7 @@ export default function App() {
           )}
 
           {step === 7 && program && (
-            <ScreenShell eyebrow="Step 7" title="Google Sheets output preview." description="This is the structure the athlete or coach should receive as the final training document.">
+            <ScreenShell eyebrow="Step 7" title="Final sheet output" description="This is the structure the athlete or coach should receive as the final training document.">
               <div className="grid gap-5">
                 <SheetPreview
                   program={program}
@@ -1283,7 +1315,7 @@ export default function App() {
           )}
         </main>
 
-        <footer className="border-t border-zinc-900 py-4 text-center text-[10px] uppercase tracking-[0.18em] text-zinc-600">
+        <footer className="border-t border-zinc-900 py-4 text-center text-[10px] uppercase text-zinc-600">
           <p>2026 Black Bear Performance. Built for fighters, coaches, and real training decisions.</p>
         </footer>
       </div>
@@ -1311,7 +1343,7 @@ function AccountPanel({
   authActionLabel: string;
 }) {
   const syncCopy: Record<SyncStatus, string> = {
-    local: "Local browser storage",
+    local: "Saved on this device",
     syncing: "Syncing",
     synced: "Cloud synced",
     offline: "Offline fallback",
@@ -1326,14 +1358,14 @@ function AccountPanel({
 
   if (account) {
     return (
-      <div className="grid gap-3 border border-zinc-800 bg-black p-4 md:grid-cols-[1fr_auto] md:items-center">
+      <div className="grid gap-3 rounded-lg border border-emerald-900/60 bg-emerald-950/15 p-4 md:grid-cols-[1fr_auto] md:items-center">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Signed in</p>
+          <p className="text-[11px] font-bold uppercase text-emerald-300">Signed in</p>
           <p className="mt-1 font-bold text-white">{account.name}</p>
           <p className="text-xs text-zinc-500">
             {account.email} / {account.role}
           </p>
-          <span className={`mt-2 inline-flex w-fit border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${syncTone}`}>
+          <span className={`mt-2 inline-flex w-fit rounded border px-2 py-1 text-[10px] font-bold uppercase ${syncTone}`}>
             Data: {syncCopy[syncStatus]}
           </span>
         </div>
@@ -1352,11 +1384,11 @@ function AccountPanel({
   }
 
   return (
-    <div className="grid gap-3 border border-zinc-800 bg-black p-4">
+    <div className="grid gap-3 rounded-lg border border-zinc-800 bg-black/55 p-4">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Account</p>
+        <p className="text-[11px] font-bold uppercase text-amber-300">Account</p>
         <p className="mt-1 text-sm leading-5 text-zinc-400">Register or log in so athletes and logs stay attached to you.</p>
-        <span className={`mt-2 inline-flex w-fit border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${syncTone}`}>
+        <span className={`mt-2 inline-flex w-fit rounded border px-2 py-1 text-[10px] font-bold uppercase ${syncTone}`}>
           Data: {syncCopy[syncStatus]}
         </span>
       </div>
@@ -1389,9 +1421,9 @@ function DataBackupPanel({
   message: string;
 }) {
   return (
-    <div className="grid gap-3 border border-zinc-800 bg-black p-4">
+    <div className="grid gap-3 rounded-lg border border-zinc-800 bg-black/55 p-4">
       <div className="grid gap-1">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Local data backup</p>
+        <p className="text-[11px] font-bold uppercase text-zinc-500">Local data backup</p>
         <p className="text-sm leading-5 text-zinc-400">
           {account
             ? `${athletesCount} athletes / ${programsCount} programs / ${logsCount} logs saved for this account.`
@@ -1402,7 +1434,7 @@ function DataBackupPanel({
         <Button variant="secondary" onClick={onExport} disabled={!account}>
           <Download className="h-4 w-4" /> Export backup
         </Button>
-        <label className="inline-flex items-center justify-center gap-2 bg-zinc-800 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700">
+        <label className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700">
           <Upload className="h-4 w-4" /> Import backup
           <input
             type="file"
@@ -1415,7 +1447,7 @@ function DataBackupPanel({
           />
         </label>
       </div>
-      {message && <p className="border border-zinc-800 bg-zinc-950 p-2 text-xs leading-5 text-zinc-400">{message}</p>}
+      {message && <p className="rounded-md border border-zinc-800 bg-zinc-950 p-2 text-xs leading-5 text-zinc-400">{message}</p>}
     </div>
   );
 }
@@ -1435,11 +1467,21 @@ function StartWorkbenchCard({
 }) {
   const recentPrograms = programs.slice(0, 3);
   const recentLogs = logs.slice(0, 3);
+  const doneLogs = logs.filter((log) => log.status === "done").length;
+  const modifiedLogs = logs.filter((log) => log.status === "modified").length;
+  const plannedLogs = logs.filter((log) => log.status === "planned").length;
+  const skippedLogs = logs.filter((log) => log.status === "skipped").length;
+  const latestProgram = recentPrograms[0];
+  const readinessDataRaw = logs.slice(0, 6).reverse().map((log) => Number(log.readiness) || 0);
+  const readinessData = readinessDataRaw.length ? [...Array(Math.max(0, 6 - readinessDataRaw.length)).fill(0), ...readinessDataRaw] : [2, 3, 4, 3, 4, 5];
 
   return (
-    <Card className="grid content-start gap-4">
+    <Card className="premium-reveal grid content-start gap-4 border-zinc-700/80">
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">{account ? "Workbench" : "Final output"}</h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold uppercase text-white">{account ? "Command center" : "Final output"}</h3>
+          <StatusPill tone={account ? "green" : "gold"} label={account ? "Ready" : "Demo"} />
+        </div>
         <p className="mt-2 text-sm leading-6 text-zinc-400">
           {account
             ? "Continue from saved athletes, reopen generated plans, or start a new assessment block."
@@ -1455,11 +1497,41 @@ function StartWorkbenchCard({
         <p>{programs.length ? "Open the latest plan directly, or go to Athlete step for the full database." : "Create or load an athlete, then generate the first block."}</p>
         <p>Outputs: 4, 8, or 12 weeks with notes, zones, checkpoints, readiness, CSV and Excel export.</p>
       </div>
+      <div className="grid gap-3 rounded-lg border border-zinc-800 bg-black/45 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase text-zinc-500">Today</p>
+            <p className="mt-1 text-sm font-semibold text-white">{latestProgram ? `Open ${latestProgram.athleteName}'s latest block` : "Create first athlete plan"}</p>
+          </div>
+          <Clock3 className="h-4 w-4 text-amber-200" />
+        </div>
+        <p className="text-xs leading-5 text-zinc-500">
+          {latestProgram
+            ? `${latestProgram.programSettings.lengthWeeks} weeks / ${latestProgram.programSettings.scDaysPerWeek} S&C days / ${latestProgram.programSettings.phase}`
+            : "Register, choose fighter type, add assessment numbers, then generate the first professional sheet."}
+        </p>
+      </div>
+      <div className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-950/80 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase text-zinc-500">Training signal</p>
+            <p className="mt-1 text-sm font-semibold text-white">{logs.length ? "Recent adherence and readiness" : "No diary data yet"}</p>
+          </div>
+          <BarChart3 className="h-4 w-4 text-emerald-200" />
+        </div>
+        <MiniBarChart values={readinessData} max={5} />
+        <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-bold uppercase text-zinc-500">
+          <span>Done {doneLogs}</span>
+          <span>Mod {modifiedLogs}</span>
+          <span>Plan {plannedLogs}</span>
+          <span>Skip {skippedLogs}</span>
+        </div>
+      </div>
       {recentPrograms.length > 0 && (
         <div className="grid gap-2">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Recent programs</p>
+          <p className="text-[11px] font-bold uppercase text-zinc-500">Recent programs</p>
           {recentPrograms.map((record) => (
-            <div key={record.id} className="grid gap-2 border border-zinc-800 bg-black p-3">
+            <div key={record.id} className="grid gap-2 rounded-lg border border-zinc-800 bg-black/55 p-3">
               <div>
                 <p className="font-bold text-white">{record.athleteName}</p>
                 <p className="text-xs text-zinc-500">
@@ -1475,9 +1547,9 @@ function StartWorkbenchCard({
       )}
       {recentLogs.length > 0 && (
         <div className="grid gap-2">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Recent logs</p>
+          <p className="text-[11px] font-bold uppercase text-zinc-500">Recent logs</p>
           {recentLogs.map((log) => (
-            <div key={log.id} className="border border-zinc-800 bg-black p-3 text-xs leading-5 text-zinc-400">
+            <div key={log.id} className="rounded-lg border border-zinc-800 bg-black/55 p-3 text-xs leading-5 text-zinc-400">
               <p className="font-semibold text-white">
                 {log.athleteName} / {log.date}
               </p>
@@ -1494,9 +1566,77 @@ function StartWorkbenchCard({
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-zinc-800 bg-black p-3">
+    <div className="rounded-md border border-zinc-800 bg-zinc-950/70 p-3">
       <p className="text-xl font-black text-white">{value}</p>
-      <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-600">{label}</p>
+      <p className="mt-1 text-[10px] font-bold uppercase text-zinc-500">{label}</p>
+    </div>
+  );
+}
+
+function StatusPill({ label, tone = "zinc" }: { label: string; tone?: "gold" | "green" | "red" | "zinc" }) {
+  const tones = {
+    gold: "border-amber-300/30 bg-amber-300/10 text-amber-200",
+    green: "border-emerald-400/25 bg-emerald-400/10 text-emerald-200",
+    red: "border-red-400/25 bg-red-500/10 text-red-200",
+    zinc: "border-zinc-700 bg-zinc-900/80 text-zinc-300",
+  };
+
+  return <span className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase ${tones[tone]}`}>{label}</span>;
+}
+
+function PremiumWorkflow() {
+  const items = [
+    { icon: User, title: "Profile", copy: "Stable fighter data: sport, age, sex, equipment, pain flags." },
+    { icon: BarChart3, title: "Assess", copy: "Strength, power, MAS, HR zones, readiness, checkpoint tests." },
+    { icon: Flame, title: "Program", copy: "4-12 week plan with warm-up, strength, power, conditioning, mobility." },
+    { icon: CheckCircle2, title: "Track", copy: "Athlete diary, coach overview, saved plans, export-ready sheet." },
+  ];
+
+  return (
+    <div className="grid gap-3 md:grid-cols-4">
+      {items.map((item) => {
+        const Icon = item.icon;
+        return (
+          <div key={item.title} className="group rounded-lg border border-zinc-800 bg-black/35 p-3 transition hover:border-amber-300/40 hover:bg-black/55">
+            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 text-amber-200 transition group-hover:border-amber-300/40">
+              <Icon className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-black uppercase text-white">{item.title}</p>
+            <p className="mt-2 text-xs leading-5 text-zinc-500">{item.copy}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MiniBarChart({ values, max }: { values: number[]; max: number }) {
+  return (
+    <div className="flex h-20 items-end gap-1 rounded-md border border-zinc-800 bg-black/45 p-2">
+      {values.map((value, index) => {
+        const height = Math.max(12, Math.min(100, (value / max) * 100));
+        return (
+          <div key={`${value}-${index}`} className="flex flex-1 items-end">
+            <div
+              className="w-full rounded-t bg-gradient-to-t from-emerald-600 to-amber-200 shadow-[0_0_18px_rgba(16,185,129,0.15)]"
+              style={{ height: `${height}%` }}
+              aria-label={`Readiness ${value} of ${max}`}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DashboardMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-black/45 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-amber-200">{icon}</div>
+        <p className="text-2xl font-black text-white">{value}</p>
+      </div>
+      <p className="mt-2 text-[10px] font-bold uppercase text-zinc-500">{label}</p>
     </div>
   );
 }
@@ -1517,7 +1657,7 @@ function AdminPanel({
   return (
     <Card className="grid gap-4">
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Admin overview</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Admin overview</h3>
         <p className="mt-1 text-xs leading-5 text-zinc-500">Local MVP control view for accounts, saved data, and system checks.</p>
       </div>
       <div className="grid grid-cols-2 gap-2 text-center md:grid-cols-5">
@@ -1529,7 +1669,7 @@ function AdminPanel({
       </div>
       <div className="grid gap-2 text-xs text-zinc-400">
         {accounts.slice(0, 6).map((item) => (
-          <div key={item.id} className="grid gap-1 border border-zinc-900 bg-black p-3 md:grid-cols-[1fr_auto]">
+          <div key={item.id} className="grid gap-1 rounded-lg border border-zinc-900 bg-black/55 p-3 md:grid-cols-[1fr_auto]">
             <span className="font-semibold text-white">{item.name}</span>
             <span>
               {item.email} / {item.role}
@@ -1574,16 +1714,27 @@ function TeamPortalPanel({
   const todayLogs = logs.filter((log) => log.date === today);
   const latestTestFor = (membership: TeamMembership) =>
     testHistory.find((entry) => entry.ownerId === membership.athleteAccountId || entry.athleteName === membership.athleteName);
+  const totalCoachAthletes = userMode === "coach" ? memberships.length : athleteMemberships.length;
+  const checkedInToday = userMode === "coach" ? memberships.filter((membership) => todayLogs.some((log) => log.ownerId === membership.athleteAccountId || log.athleteName === membership.athleteName)).length : todayLogs.length;
+  const testsSaved = testHistory.length;
 
   return (
     <Card className="grid gap-4">
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Team portal</h3>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-sm font-bold uppercase text-white">{userMode === "coach" ? "Coach dashboard" : "Athlete dashboard"}</h3>
+          <StatusPill tone={account ? "green" : "zinc"} label={account ? "Data saved" : "Login required"} />
+        </div>
         <p className="mt-1 text-xs leading-5 text-zinc-500">
           {userMode === "coach"
             ? "Create a team, share the join code, then watch athlete diary entries and checkpoint tests."
             : "Join your coach team and fill the plan diary from training instead of paper."}
         </p>
+      </div>
+      <div className="grid gap-2 md:grid-cols-3">
+        <DashboardMetric icon={<Users className="h-4 w-4" />} label={userMode === "coach" ? "Athletes linked" : "Teams joined"} value={String(totalCoachAthletes)} />
+        <DashboardMetric icon={<CheckCircle2 className="h-4 w-4" />} label="Today check-ins" value={String(checkedInToday)} />
+        <DashboardMetric icon={<CalendarDays className="h-4 w-4" />} label="Checkpoint tests" value={String(testsSaved)} />
       </div>
 
       {userMode === "coach" ? (
@@ -1599,13 +1750,13 @@ function TeamPortalPanel({
               {teams.map((team) => {
                 const teamMembers = memberships.filter((membership) => membership.teamId === team.id);
                 return (
-                  <div key={team.id} className="grid gap-3 border border-zinc-800 bg-black p-3">
+                  <div key={team.id} className="grid gap-3 rounded-lg border border-zinc-800 bg-black/55 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="font-bold text-white">{team.name}</p>
                         <p className="text-xs text-zinc-500">Join code: {team.joinCode}</p>
                       </div>
-                      <span className="border border-zinc-800 px-2 py-1 text-xs text-zinc-400">{teamMembers.length} athletes</span>
+                      <span className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-400">{teamMembers.length} athletes</span>
                     </div>
                     {teamMembers.length > 0 && (
                       <div className="grid gap-2">
@@ -1613,7 +1764,7 @@ function TeamPortalPanel({
                           const log = todayLogs.find((item) => item.ownerId === membership.athleteAccountId || item.athleteName === membership.athleteName);
                           const latestTest = latestTestFor(membership);
                           return (
-                            <div key={membership.id} className="grid gap-2 border border-zinc-900 bg-zinc-950 p-3 text-xs md:grid-cols-[1fr_1.4fr_auto] md:items-center">
+                            <div key={membership.id} className="grid gap-2 rounded-lg border border-zinc-800 bg-zinc-950/80 p-3 text-xs md:grid-cols-[1fr_1.4fr_auto] md:items-center">
                               <div>
                                 <p className="font-semibold text-white">{membership.athleteName}</p>
                                 <p className="text-zinc-500">{membership.athleteEmail}</p>
@@ -1654,7 +1805,7 @@ function TeamPortalPanel({
               {athleteMemberships.map((membership) => {
                 const team = allTeams.find((item) => item.id === membership.teamId);
                 return (
-                  <div key={membership.id} className="border border-zinc-800 bg-black p-3">
+                  <div key={membership.id} className="rounded-lg border border-emerald-900/60 bg-emerald-950/15 p-3">
                     Connected to {team?.name || "Coach team"} as <span className="font-semibold text-white">{membership.athleteName}</span>
                   </div>
                 );
@@ -1687,24 +1838,24 @@ function GeminiPanel({
   return (
     <Card className="grid gap-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 items-center justify-center border border-zinc-800 bg-black text-white">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-amber-300/30 bg-amber-300/10 text-amber-200">
           <Sparkles className="h-4 w-4" />
         </div>
         <div>
-          <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Gemini coach check</h3>
+          <h3 className="text-sm font-bold uppercase text-white">Gemini coach check</h3>
           <p className="mt-1 text-xs leading-5 text-zinc-500">
             Backend-only AI helper. The structured OTA-style sheet remains the source of truth.
           </p>
         </div>
       </div>
       <label className="grid gap-1.5">
-        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Question</span>
+        <span className="text-[11px] font-bold uppercase text-zinc-500">Question</span>
         <textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           maxLength={1200}
           placeholder="Ask for coach notes, risk flags, or a plain-language athlete explanation."
-          className="min-h-24 border border-zinc-800 bg-black px-3 py-2 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-zinc-400"
+          className="min-h-24 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/15"
         />
       </label>
       <div className="flex flex-wrap items-center gap-3">
@@ -1713,8 +1864,8 @@ function GeminiPanel({
         </Button>
         <p className="text-xs text-zinc-600">{account ? "Uses server GEMINI_API_KEY with rate limit." : "Log in to use AI."}</p>
       </div>
-      {error && <p className="border border-red-900 bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
-      {response && <div className="whitespace-pre-wrap border border-zinc-800 bg-black p-4 text-sm leading-6 text-zinc-200">{response}</div>}
+      {error && <p className="rounded-lg border border-red-900 bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
+      {response && <div className="whitespace-pre-wrap rounded-lg border border-zinc-800 bg-black/60 p-4 text-sm leading-6 text-zinc-200">{response}</div>}
     </Card>
   );
 }
@@ -1742,7 +1893,7 @@ function TestHistoryPanel({
   return (
     <Card className="grid gap-4">
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Microcycle test history</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Microcycle test history</h3>
         <p className="mt-1 text-xs leading-5 text-zinc-500">
           Save checkpoint numbers after a microcycle. The coach can track progress without rewriting the athlete profile.
         </p>
@@ -1756,7 +1907,7 @@ function TestHistoryPanel({
         </Button>
       </div>
       {latest && (
-        <div className="grid gap-2 border border-zinc-800 bg-black p-3 text-xs text-zinc-400 md:grid-cols-4">
+        <div className="grid gap-2 rounded-lg border border-emerald-900/60 bg-emerald-950/15 p-3 text-xs text-zinc-300 md:grid-cols-4">
           <p>
             Latest: <span className="font-semibold text-white">{latest.date}</span>
           </p>
@@ -1768,7 +1919,7 @@ function TestHistoryPanel({
       {sorted.length > 0 && (
         <div className="grid gap-2">
           {sorted.slice(0, 5).map((entry) => (
-            <div key={entry.id} className="grid gap-1 border border-zinc-900 bg-black p-3 text-xs md:grid-cols-[130px_1fr_1fr]">
+            <div key={entry.id} className="grid gap-1 rounded-lg border border-zinc-800 bg-black/55 p-3 text-xs md:grid-cols-[130px_1fr_1fr]">
               <p className="font-semibold text-white">{entry.date}</p>
               <p className="text-zinc-400">
                 {entry.microcycle}: SQ/TB {entry.squatOrTrapBar || "-"}, push {entry.benchOrPushups || "-"}, pullups {entry.pullups || "-"}
@@ -1800,7 +1951,7 @@ function TrainingLogPanel({
   return (
     <Card className="grid gap-4">
       <div className="grid gap-1">
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Training log</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Training log</h3>
         <p className="text-sm leading-6 text-zinc-500">
           {account ? `Logs are saved for ${athleteName || "current athlete"} under ${account.name}.` : "Log in to save training history."}
         </p>
@@ -1828,12 +1979,12 @@ function TrainingLogPanel({
         <Input label="Pain / restriction" value={draft.painNote} onChange={(value) => setDraft((current) => ({ ...current, painNote: String(value) }))} placeholder="Shoulder tight / knee OK / none" />
       </div>
       <label className="grid gap-1.5">
-        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">Training diary</span>
+        <span className="text-[11px] font-bold uppercase text-zinc-500">Training diary</span>
         <textarea
           value={draft.notes}
           onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
           placeholder="What was done, what changed, how athlete felt, what coach should adjust"
-          className="min-h-24 border border-zinc-800 bg-black px-3 py-2 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-zinc-400"
+          className="min-h-24 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/15"
         />
       </label>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1845,7 +1996,7 @@ function TrainingLogPanel({
       {logs.length > 0 && (
         <div className="grid gap-2">
           {logs.slice(0, 5).map((log) => (
-            <div key={log.id} className="grid gap-1 border border-zinc-800 bg-black p-3 text-sm md:grid-cols-[120px_1fr_auto] md:items-center">
+            <div key={log.id} className="grid gap-1 rounded-lg border border-zinc-800 bg-black/55 p-3 text-sm md:grid-cols-[120px_1fr_auto] md:items-center">
               <p className="font-semibold text-white">{log.date}</p>
               <p className="text-zinc-400">
                 Week {log.week} / {log.day} / readiness {log.readiness}/5
@@ -1854,7 +2005,7 @@ function TrainingLogPanel({
                 {log.painNote ? ` / pain: ${log.painNote}` : ""}
                 {log.notes ? ` - ${log.notes}` : ""}
               </p>
-              <span className="text-xs font-bold uppercase tracking-[0.14em] text-zinc-500">{log.status}</span>
+              <span className="text-xs font-bold uppercase text-zinc-500">{log.status}</span>
             </div>
           ))}
         </div>
@@ -1867,8 +2018,8 @@ function ErrorList({ errors }: { errors: string[] }) {
   if (!errors.length) return null;
 
   return (
-    <div className="mb-5 border border-red-900 bg-red-950/40 p-4">
-      <p className="text-sm font-bold uppercase tracking-[0.16em] text-red-200">Check the input</p>
+    <div className="mb-5 rounded-lg border border-red-900 bg-red-950/40 p-4">
+      <p className="text-sm font-bold uppercase text-red-200">Check the input</p>
       <ul className="mt-2 grid gap-1 text-sm text-red-100">
         {errors.map((error) => (
           <li key={error}>- {error}</li>
@@ -1894,7 +2045,7 @@ function CurrentSummary({
   programSettings: ProgramSettings;
 }) {
   return (
-    <div className="mb-5 grid gap-2 border border-zinc-900 bg-zinc-950/60 p-3 text-xs md:grid-cols-6">
+    <div className="mb-5 grid gap-2 rounded-lg border border-zinc-800/80 bg-black/45 p-3 text-xs shadow-[0_10px_30px_rgba(0,0,0,0.18)] md:grid-cols-6">
       <SummaryItem label="Account" value={account ? account.name : "Not signed in"} />
       <SummaryItem label="Mode" value={`${userMode} / ${languageMode.toUpperCase().replace("_", "+")}`} />
       <SummaryItem label="Fighter" value={athleteProfile.name || "Not set"} />
@@ -1908,7 +2059,7 @@ function CurrentSummary({
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-600">{label}</p>
+      <p className="text-[10px] font-bold uppercase text-zinc-600">{label}</p>
       <p className="mt-1 truncate font-semibold text-zinc-200">{value}</p>
     </div>
   );
@@ -1924,15 +2075,15 @@ function PriorityPanel({
   return (
     <Card className="grid gap-3">
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Priority score</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Priority score</h3>
         <p className="mt-1 text-xs leading-5 text-zinc-500">Top items the current cycle should respect. This is guidance, not a medical diagnosis.</p>
       </div>
       <div className="grid gap-3 md:grid-cols-4">
         {scores.map((score) => (
-          <div key={score.id} className="border border-zinc-800 bg-black p-3">
+          <div key={score.id} className="rounded-lg border border-zinc-800 bg-black/55 p-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-white">{score.label}</p>
-              <span className="bg-white px-2 py-1 text-xs font-black text-black">{score.score}/5</span>
+              <p className="text-xs font-bold uppercase text-white">{score.label}</p>
+              <span className="rounded bg-amber-300 px-2 py-1 text-xs font-black text-zinc-950">{score.score}/5</span>
             </div>
             <p className="mt-2 text-xs leading-5 text-zinc-500">
               {languageMode !== "en" && score.reasonUa}
@@ -1958,7 +2109,7 @@ function SavedAthletesPanel({
   if (!athletes.length) {
     return (
       <Card className="grid gap-2">
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Saved athletes</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Saved athletes</h3>
         <p className="text-sm text-zinc-500">No saved athlete profiles yet. Save stable data once: combat profile, sport, age, sex, equipment, and injury flags.</p>
       </Card>
     );
@@ -1967,12 +2118,12 @@ function SavedAthletesPanel({
   return (
     <Card className="grid gap-3">
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Saved athletes</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Saved athletes</h3>
         <p className="mt-1 text-xs text-zinc-500">Stable profile data is saved locally. Assessment and readiness stay editable for each training cycle.</p>
       </div>
       <div className="grid gap-2 md:grid-cols-2">
         {athletes.map((saved) => (
-          <div key={saved.id} className="grid gap-3 border border-zinc-800 bg-black p-3 md:grid-cols-[1fr_auto] md:items-center">
+          <div key={saved.id} className="grid gap-3 rounded-lg border border-zinc-800 bg-black/55 p-3 md:grid-cols-[1fr_auto] md:items-center">
             <div>
               <p className="font-bold text-white">{saved.athleteProfile.name}</p>
               <p className="text-xs text-zinc-500">
@@ -2009,7 +2160,7 @@ function SavedProgramsPanel({
   if (!programs.length) {
     return (
       <Card className="grid gap-2">
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Program history</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Program history</h3>
         <p className="text-sm text-zinc-500">Generated programs will be saved here, so a coach can reopen the last plan instead of rebuilding it.</p>
       </Card>
     );
@@ -2018,12 +2169,12 @@ function SavedProgramsPanel({
   return (
     <Card className="grid gap-3">
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">Program history</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Program history</h3>
         <p className="mt-1 text-xs text-zinc-500">Open a previous plan with its original tests, settings, and generated weeks.</p>
       </div>
       <div className="grid gap-2">
         {programs.slice(0, 8).map((record) => (
-          <div key={record.id} className="grid gap-3 border border-zinc-800 bg-black p-3 md:grid-cols-[1fr_auto] md:items-center">
+          <div key={record.id} className="grid gap-3 rounded-lg border border-zinc-800 bg-black/55 p-3 md:grid-cols-[1fr_auto] md:items-center">
             <div>
               <p className="font-bold text-white">{record.athleteName}</p>
               <p className="text-xs text-zinc-500">
@@ -2059,10 +2210,10 @@ function ScreenShell({
   children: React.ReactNode;
 }) {
   return (
-    <section className="grid gap-5">
+    <section className="premium-reveal grid gap-5">
       <div className="grid gap-1">
-        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-600">{eyebrow}</p>
-        <h2 className="max-w-4xl text-2xl font-black tracking-tight text-white md:text-3xl">{title}</h2>
+        <p className="text-[11px] font-bold uppercase text-amber-300">{eyebrow}</p>
+        <h2 className="max-w-4xl text-2xl font-black tracking-normal text-white md:text-3xl">{title}</h2>
         <p className="max-w-3xl text-sm leading-6 text-zinc-500">{description}</p>
       </div>
       {children}
@@ -2096,7 +2247,7 @@ function Checklist({
 }) {
   return (
     <Card className="grid gap-3">
-      <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">{title}</h3>
+      <h3 className="text-sm font-bold uppercase text-white">{title}</h3>
       <div className="grid gap-2 md:grid-cols-4">
         {items.map((item) => {
           const active = selected.includes(item);
@@ -2105,8 +2256,8 @@ function Checklist({
               key={item}
               type="button"
               onClick={() => onToggle(item)}
-              className={`border px-3 py-2 text-left text-xs font-semibold transition ${
-                active ? "border-white bg-white text-black" : "border-zinc-800 bg-black text-zinc-500 hover:border-zinc-600 hover:text-zinc-200"
+              className={`rounded-md border px-3 py-2 text-left text-xs font-semibold transition ${
+                active ? "border-amber-300 bg-amber-300 text-zinc-950" : "border-zinc-800 bg-black/55 text-zinc-500 hover:border-zinc-600 hover:text-zinc-200"
               }`}
             >
               {item}

@@ -56,9 +56,9 @@ function AssessmentGroup({
   children: ReactNode;
 }) {
   return (
-    <section className="grid gap-3 border-b border-zinc-900 pb-6 last:border-b-0 last:pb-0">
+    <section className="grid gap-3 rounded-lg border border-zinc-800 bg-black/35 p-4">
       <div>
-        <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">{title}</h3>
+        <h3 className="text-sm font-bold uppercase text-white">{title}</h3>
         <p className="mt-1 text-xs leading-5 text-zinc-500">{description}</p>
       </div>
       <div className="grid gap-3 md:grid-cols-4">{children}</div>
