@@ -1,20 +1,44 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# Black Bear Performance MVP
 
-# Run and deploy your AI Studio app
+Web MVP for combat-sport athletes and coaches: registration, athlete/coach/admin roles, combat profile quiz, assessment inputs, program generation, OTA-style sheet preview/export, team portal, training diary, checkpoint tests, and a backend-only Gemini coach-check endpoint.
 
-This contains everything you need to run your app locally.
+## Local Run
 
-View your app in AI Studio: https://ai.studio/apps/6f304628-109e-4fd9-9a2a-45b72e1de5e7
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
+Prerequisite: Node.js 18+.
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```bash
+   npm install
+   ```
+2. Copy `.env.example` to `.env.local` and set:
+   ```bash
+   GEMINI_API_KEY=your_key_here
+   ```
+3. Start the app with API routes:
+   ```bash
+   npm run dev
+   ```
+4. Open:
+   ```text
+   http://localhost:3000
+   ```
+
+## Checks
+
+```bash
+npm run lint
+npm run build
+```
+
+Browser tests live in `tools/` and can be run after the dev server starts.
+
+## Environment Variables
+
+- `GEMINI_API_KEY`: required for `/api/gemini`, server-only.
+- `GEMINI_MODEL`: optional, defaults to `gemini-2.5-flash`.
+- `VITE_BBP_REMOTE_SYNC`: set to `true` only when Neon sync is configured.
+- `DATABASE_URL`: optional Neon Postgres connection string for `/api/sync`.
+
+## Deployment
+
+Deploy to Vercel from the `app` directory. Add `GEMINI_API_KEY` in Vercel Project Settings -> Environment Variables for Production/Preview. Add `DATABASE_URL` only if remote sync is enabled.

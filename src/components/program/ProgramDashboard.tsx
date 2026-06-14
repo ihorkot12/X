@@ -1,14 +1,15 @@
-import React, { useState } from "react";
-import { GeneratedProgram, LanguageMode, ProgramWeek, ProgramDay } from "../../types";
+import type { Key, ReactNode } from "react";
+import { useState } from "react";
+import { ClipboardList, Dumbbell, HeartPulse, ShieldCheck, Zap } from "lucide-react";
+import { ExercisePrescription, GeneratedProgram, LanguageMode, ProgramDay } from "../../types";
 import { Card } from "../ui/Base";
-import { Clock, Dumbbell, Zap, HeartPulse, ClipboardList } from "lucide-react";
 
-export const ProgramDashboard = ({ 
-  program, 
-  languageMode 
-}: { 
-  program: GeneratedProgram; 
-  languageMode: LanguageMode 
+export const ProgramDashboard = ({
+  program,
+  languageMode,
+}: {
+  program: GeneratedProgram;
+  languageMode: LanguageMode;
 }) => {
   const [activeWeek, setActiveWeek] = useState(0);
   const week = program.weeks[activeWeek];
@@ -16,49 +17,43 @@ export const ProgramDashboard = ({
   if (!week) return null;
 
   return (
-    <div className="space-y-8">
-      {/* Week Selector */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-        {program.weeks.map((w, idx) => (
+    <div className="grid gap-5">
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {program.weeks.map((item, index) => (
           <button
-            key={w.week}
-            onClick={() => setActiveWeek(idx)}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
-              activeWeek === idx 
-                ? "bg-white text-black shadow-lg" 
-                : "bg-zinc-900 text-zinc-500 hover:text-zinc-300 border border-zinc-800"
+            key={item.week}
+            type="button"
+            onClick={() => setActiveWeek(index)}
+            className={`min-w-[92px] border px-3 py-2 text-left text-xs font-bold uppercase tracking-[0.12em] transition ${
+              activeWeek === index ? "border-white bg-white text-black" : "border-zinc-800 bg-black text-zinc-500 hover:text-zinc-200"
             }`}
           >
-            Week {w.week} {w.isCheckpoint ? "(Deload)" : ""}
+            <span className="block">Week {item.week}</span>
+            <span className="block text-[9px] opacity-70">{item.isCheckpoint ? "Checkpoint" : item.blockName}</span>
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Week Summary */}
-        <div className="lg:col-span-4 space-y-6">
-          <Card className="p-6 border-l-4 border-l-white">
-            <h2 className="text-xl font-bold text-white mb-1">{week.blockName}</h2>
-            <p className="text-sm text-zinc-400 mb-4">{week.focus}</p>
-            <div className="space-y-4 pt-4 border-t border-zinc-800">
-              <div className="flex items-start gap-3">
-                <ClipboardList className="w-5 h-5 text-zinc-500 mt-1" />
-                <div>
-                  <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Coaching Notes</p>
-                  <p className="text-sm text-zinc-300">
-                    {languageMode !== "en" && "Приділяй увагу відновленню після важких спарингів. "}
-                    {languageMode !== "ua" && "Focus on recovery after hard sparring sessions."}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
+      <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
+        <Card className="grid content-start gap-4">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">Block</p>
+            <h3 className="mt-1 text-xl font-black text-white">{week.blockName}</h3>
+            <p className="mt-2 text-sm leading-6 text-zinc-300">{week.focus}</p>
+          </div>
+          <div className="grid gap-3 border-t border-zinc-900 pt-4 text-sm leading-6 text-zinc-300">
+            <p>
+              <span className="font-semibold text-white">Rule:</span> every 4th week reduces load and becomes a testing/checkpoint week.
+            </p>
+            <p>
+              <span className="font-semibold text-white">Coach check:</span> do not stack heavy legs before sparring or heavy grip/neck/back before wrestling.
+            </p>
+          </div>
+        </Card>
 
-        {/* Days List */}
-        <div className="lg:col-span-8 space-y-6">
-          {week.days.map((day, dIdx) => (
-            <DayCard key={dIdx} day={day} languageMode={languageMode} />
+        <div className="grid gap-4">
+          {week.days.map((day) => (
+            <DayCard key={day.day} day={day} languageMode={languageMode} />
           ))}
         </div>
       </div>
@@ -66,49 +61,85 @@ export const ProgramDashboard = ({
   );
 };
 
-const DayCard = ({ day, languageMode }: { day: ProgramDay; languageMode: LanguageMode; key?: React.Key }) => {
+function DayCard({ day, languageMode }: { day: ProgramDay; languageMode: LanguageMode; key?: Key }) {
   return (
     <Card className="p-0">
-      <div className="bg-zinc-800/50 px-6 py-3 border-b border-zinc-800 flex justify-between items-center">
-        <h3 className="font-bold text-white tracking-wide">{day.day} — {day.sessionGoal}</h3>
-        <span className="text-[10px] font-bold bg-white text-black px-2 py-0.5 rounded uppercase">{day.block}</span>
+      <div className="grid gap-2 border-b border-zinc-900 bg-zinc-950 px-4 py-3 md:grid-cols-[1fr_auto] md:items-center">
+        <div>
+          <h3 className="font-bold text-white">
+            {day.day}: {day.sessionGoal}
+          </h3>
+          <p className="text-xs uppercase tracking-[0.16em] text-zinc-600">{day.block}</p>
+        </div>
+        <div className="text-xs leading-5 text-zinc-400">
+          {languageMode !== "en" && day.coachNotesUa && <span>{day.coachNotesUa}</span>}
+          {languageMode === "ua_en" && day.coachNotesUa && day.coachNotesEn && <span> / </span>}
+          {languageMode !== "ua" && day.coachNotesEn && <span>{day.coachNotesEn}</span>}
+        </div>
       </div>
-      <div className="p-6 space-y-6">
-        <ExerciseSection title="Warm-up" icon={<HeartPulse className="w-4 h-4" />} exercises={day.warmup} languageMode={languageMode} />
-        <ExerciseSection title="Power & Speed" icon={<Zap className="w-4 h-4 text-yellow-500" />} exercises={day.powerSpeed} languageMode={languageMode} />
-        <ExerciseSection title="Main Strength" icon={<Dumbbell className="w-4 h-4 text-white" />} exercises={day.strength} languageMode={languageMode} />
-        <ExerciseSection title="Accessory" icon={<ClipboardList className="w-4 h-4 text-zinc-500" />} exercises={day.accessory} languageMode={languageMode} />
+
+      <div className="grid gap-5 p-4">
+        <ExerciseSection title="Warm-up" icon={<HeartPulse className="h-4 w-4" />} exercises={day.warmup} languageMode={languageMode} />
+        <ExerciseSection title="Power / Speed" icon={<Zap className="h-4 w-4" />} exercises={day.powerSpeed} languageMode={languageMode} />
+        <ExerciseSection title="Strength" icon={<Dumbbell className="h-4 w-4" />} exercises={day.strength} languageMode={languageMode} />
+        <ExerciseSection title="Accessory" icon={<ClipboardList className="h-4 w-4" />} exercises={day.accessory} languageMode={languageMode} />
+        <ExerciseSection title="Conditioning" icon={<HeartPulse className="h-4 w-4" />} exercises={day.conditioning} languageMode={languageMode} />
+        <ExerciseSection title="Mobility / Prehab" icon={<ShieldCheck className="h-4 w-4" />} exercises={day.mobilityPrehab} languageMode={languageMode} />
       </div>
     </Card>
   );
-};
+}
 
-const ExerciseSection = ({ title, icon, exercises, languageMode }: { title: string; icon: React.ReactNode; exercises: any[]; languageMode: LanguageMode }) => {
-  if (exercises.length === 0) return null;
+function ExerciseSection({
+  title,
+  icon,
+  exercises,
+  languageMode,
+}: {
+  title: string;
+  icon: ReactNode;
+  exercises: ExercisePrescription[];
+  languageMode: LanguageMode;
+}) {
+  if (!exercises.length) return null;
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 border-b border-zinc-800/50 pb-2">
+    <section className="grid gap-2">
+      <div className="flex items-center gap-2 border-b border-zinc-900 pb-2 text-zinc-400">
         {icon}
-        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{title}</h4>
+        <h4 className="text-xs font-bold uppercase tracking-[0.16em]">{title}</h4>
       </div>
-      <div className="space-y-4">
-        {exercises.map((ex, idx) => (
-          <div key={idx} className="grid grid-cols-12 gap-4">
-            <div className="col-span-12 md:col-span-5">
-              <p className="text-sm font-bold text-white">{ex.name}</p>
-              {languageMode !== "en" && ex.notesUa && <p className="text-[11px] text-zinc-500 italic mt-0.5">{ex.notesUa}</p>}
-              {languageMode !== "ua" && ex.notesEn && <p className="text-[11px] text-zinc-500 italic mt-0.5">{ex.notesEn}</p>}
-            </div>
-            <div className="col-span-12 md:col-span-7 flex flex-wrap gap-4 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-              {ex.sets && <div><span className="text-zinc-400">Sets:</span> {ex.sets}</div>}
-              {ex.reps && <div><span className="text-zinc-400">Reps:</span> {ex.reps}</div>}
-              {ex.intensity && <div><span className="text-zinc-400">Int:</span> {ex.intensity}</div>}
-              {ex.rest && <div><span className="text-zinc-400">Rest:</span> {ex.rest}</div>}
-            </div>
-          </div>
-        ))}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] border-collapse text-sm">
+          <thead>
+            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-zinc-600">
+              <th className="py-2 pr-3">Exercise</th>
+              <th className="py-2 pr-3">Sets</th>
+              <th className="py-2 pr-3">Reps</th>
+              <th className="py-2 pr-3">Tempo</th>
+              <th className="py-2 pr-3">Rest</th>
+              <th className="py-2 pr-3">Intensity</th>
+              <th className="py-2 pr-3">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {exercises.map((exercise, index) => (
+              <tr key={`${exercise.name}-${index}`} className="border-t border-zinc-900 align-top">
+                <td className="py-2 pr-3 font-semibold text-white">{exercise.name}</td>
+                <td className="py-2 pr-3 text-zinc-400">{exercise.sets || "-"}</td>
+                <td className="py-2 pr-3 text-zinc-400">{exercise.reps || "-"}</td>
+                <td className="py-2 pr-3 text-zinc-400">{exercise.tempo || "-"}</td>
+                <td className="py-2 pr-3 text-zinc-400">{exercise.rest || "-"}</td>
+                <td className="py-2 pr-3 text-zinc-400">{exercise.intensity || "-"}</td>
+                <td className="max-w-[340px] py-2 pr-3 text-xs leading-5 text-zinc-400">
+                  {languageMode !== "en" && exercise.notesUa && <p>{exercise.notesUa}</p>}
+                  {languageMode !== "ua" && exercise.notesEn && <p>{exercise.notesEn}</p>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </div>
+    </section>
   );
-};
+}
