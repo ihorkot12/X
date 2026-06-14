@@ -1,0 +1,8 @@
+{
+  "name": "Black Bear Performance",
+  "description": "Professional S&C program generator for combat athletes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
