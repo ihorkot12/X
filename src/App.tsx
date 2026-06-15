@@ -1497,7 +1497,7 @@ function StartWorkbenchCard({
   const readinessData = readinessDataRaw.length ? [...Array(Math.max(0, 6 - readinessDataRaw.length)).fill(0), ...readinessDataRaw] : [2, 3, 4, 3, 4, 5];
 
   return (
-    <Card className="premium-reveal grid content-start gap-4 border-zinc-700/80">
+    <Card className="premium-reveal grid content-start gap-4 self-start border-zinc-700/80 lg:sticky lg:top-32">
       <div>
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold uppercase text-white">{account ? "Command center" : "Final output"}</h3>
@@ -1637,7 +1637,7 @@ function MiniBarChart({ values, max }: { values: number[]; max: number }) {
       {values.map((value, index) => {
         const height = Math.max(12, Math.min(100, (value / max) * 100));
         return (
-          <div key={`${value}-${index}`} className="flex flex-1 items-end">
+          <div key={`${value}-${index}`} className="flex h-full flex-1 items-end">
             <div
               className="w-full rounded-t bg-gradient-to-t from-emerald-600 to-amber-200 shadow-[0_0_18px_rgba(16,185,129,0.15)]"
               style={{ height: `${height}%` }}
