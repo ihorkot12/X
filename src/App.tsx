@@ -913,36 +913,49 @@ export default function App() {
               <p className="text-[10px] font-bold uppercase text-zinc-500">Performance S&C</p>
             </div>
           </div>
-          <nav className="grid grid-cols-4 gap-1 md:grid-cols-7">
-            {steps.map((item, index) => {
-              const Icon = item.icon;
-              const active = step === index + 1;
-              const targetStep = index + 1;
-              const completed = highestStepReached > targetStep;
-              const enabled = canUseStep(targetStep);
-              return (
-                <button
-                  key={item.name}
-                  type="button"
-                  onClick={() => goToStep(targetStep)}
-                  disabled={!enabled}
-                  aria-disabled={!enabled}
-                  className={`flex min-h-10 items-center justify-center gap-2 rounded-md border px-2 text-[10px] font-bold uppercase transition ${
-                    active
-                      ? "border-amber-300 bg-amber-300 text-zinc-950"
-                      : completed
-                        ? "border-emerald-900/70 bg-emerald-950/30 text-emerald-200"
-                        : enabled
-                          ? "border-zinc-800 bg-zinc-950/70 text-zinc-500 hover:border-zinc-600 hover:text-zinc-200"
-                          : "cursor-not-allowed border-zinc-950 text-zinc-700 opacity-50"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span className="hidden xl:inline">{item.name}</span>
-                </button>
-              );
-            })}
-          </nav>
+          <div className="grid gap-2">
+            <nav className="grid grid-cols-4 gap-1 md:grid-cols-7">
+              {steps.map((item, index) => {
+                const Icon = item.icon;
+                const active = step === index + 1;
+                const targetStep = index + 1;
+                const completed = highestStepReached > targetStep;
+                const enabled = canUseStep(targetStep);
+                return (
+                  <button
+                    key={item.name}
+                    type="button"
+                    onClick={() => goToStep(targetStep)}
+                    disabled={!enabled}
+                    aria-disabled={!enabled}
+                    className={`flex min-h-10 items-center justify-center gap-2 rounded-md border px-2 text-[10px] font-bold uppercase transition ${
+                      active
+                        ? "border-amber-300 bg-amber-300 text-zinc-950"
+                        : completed
+                          ? "border-emerald-900/70 bg-emerald-950/30 text-emerald-200"
+                          : enabled
+                            ? "border-zinc-800 bg-zinc-950/70 text-zinc-500 hover:border-zinc-600 hover:text-zinc-200"
+                            : "cursor-not-allowed border-zinc-950 text-zinc-700 opacity-50"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="hidden xl:inline">{item.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="grid gap-1">
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase text-zinc-500">
+                <span>Onboarding progress</span>
+                <span>
+                  Step {step}/{steps.length}
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-zinc-900">
+                <div className="h-full rounded-full bg-gradient-to-r from-amber-300 via-emerald-300 to-zinc-100 transition-all duration-500" style={{ width: `${(step / steps.length) * 100}%` }} />
+              </div>
+            </div>
+          </div>
         </header>
 
         <main className="min-h-[620px]">
@@ -954,6 +967,14 @@ export default function App() {
             combatProfile={combatProfile}
             athleteProfile={athleteProfile}
             programSettings={programSettings}
+          />
+          <NextActionBar
+            step={step}
+            account={account}
+            athleteProfile={athleteProfile}
+            program={program}
+            savedProgramsCount={savedPrograms.length}
+            logsCount={trainingLogs.length}
           />
 
           {step === 1 && (
@@ -2052,6 +2073,51 @@ function CurrentSummary({
       <SummaryItem label="Profile" value={PROFILE_COPY[combatProfile].title} />
       <SummaryItem label="Sport" value={athleteProfile.sport} />
       <SummaryItem label="Output" value={`${programSettings.lengthWeeks} wk / ${programSettings.scDaysPerWeek} days`} />
+    </div>
+  );
+}
+
+function NextActionBar({
+  step,
+  account,
+  athleteProfile,
+  program,
+  savedProgramsCount,
+  logsCount,
+}: {
+  step: number;
+  account: UserAccount | null;
+  athleteProfile: AthleteProfile;
+  program: GeneratedProgram | null;
+  savedProgramsCount: number;
+  logsCount: number;
+}) {
+  const actions = [
+    "Log in, choose role and language, then continue.",
+    "Pick the fighter type before loading sport stress.",
+    "Save stable athlete data once so future blocks are faster.",
+    "Choose block length, weekly S&C days and competition context.",
+    "Enter tests and readiness; then generate the plan.",
+    "Review next session, week density, risks and coach notes.",
+    "Export the sheet and save the athlete diary after training.",
+  ];
+  const label = actions[step - 1] || actions[0];
+  const detail = program
+    ? `${program.weeks.length} weeks ready / ${logsCount} logs saved`
+    : account
+      ? `${savedProgramsCount} saved programs / ${athleteProfile.name || "athlete not set"}`
+      : "No account yet";
+
+  return (
+    <div className="mb-5 grid gap-3 rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 md:grid-cols-[auto_1fr_auto] md:items-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-300 text-zinc-950">
+        <Target className="h-5 w-5" />
+      </div>
+      <div>
+        <p className="text-[11px] font-bold uppercase text-amber-200">Next best action</p>
+        <p className="mt-1 text-sm font-semibold text-white">{label}</p>
+      </div>
+      <StatusPill tone={program ? "green" : account ? "gold" : "zinc"} label={detail} />
     </div>
   );
 }
