@@ -1298,7 +1298,7 @@ export default function App() {
                     Back to assessment
                   </Button>
                   <Button onClick={nextStep}>
-                    Preview Google Sheets <ChevronRight className="h-4 w-4" />
+                    Open final sheet <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -1515,7 +1515,7 @@ function StartWorkbenchCard({
         <StatBox label="Logs" value={String(logs.length)} />
       </div>
       <div className="grid gap-2 text-sm leading-5 text-zinc-500">
-        <p>{programs.length ? "Open the latest plan directly, or go to Athlete step for the full database." : "Create or load an athlete, then generate the first block."}</p>
+        <p>{programs.length ? "Start the latest training plan directly, or go to Athlete step for the full database." : "Create or load an athlete, then generate the first block."}</p>
         <p>Outputs: 4, 8, or 12 weeks with notes, zones, checkpoints, readiness, CSV and Excel export.</p>
       </div>
       <div className="grid gap-3 rounded-lg border border-zinc-800 bg-black/45 p-3">
@@ -1560,7 +1560,7 @@ function StartWorkbenchCard({
                 </p>
               </div>
               <Button variant="secondary" onClick={() => onOpenProgram(record)}>
-                Open latest plan
+                Start training plan
               </Button>
             </div>
           ))}
@@ -1924,7 +1924,7 @@ function TestHistoryPanel({
         <Input label="Microcycle" value={draft.microcycle} onChange={(value) => setDraft((current) => ({ ...current, microcycle: String(value) }))} />
         <Input label="Notes" value={draft.notes} onChange={(value) => setDraft((current) => ({ ...current, notes: String(value) }))} placeholder="Fresh / tired / after sparring" />
         <Button onClick={onSave} disabled={!account || !athleteName.trim()}>
-          Save test
+          Save checkpoint
         </Button>
       </div>
       {latest && (
@@ -2010,7 +2010,7 @@ function TrainingLogPanel({
       </label>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button onClick={onSave} disabled={!account || !athleteName.trim()}>
-          Save log
+          Save training log
         </Button>
         <p className="text-xs text-zinc-600">{logs.length} saved logs for this athlete</p>
       </div>
@@ -2294,7 +2294,7 @@ function NavigationButtons({ prev, next }: { prev: () => void; next: () => void 
         <ChevronLeft className="h-4 w-4" /> Back
       </Button>
       <Button onClick={next}>
-        Next Step <ChevronRight className="h-4 w-4" />
+        Continue <ChevronRight className="h-4 w-4" />
       </Button>
     </div>
   );
