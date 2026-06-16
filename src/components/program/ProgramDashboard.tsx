@@ -1,6 +1,6 @@
 import type { Key, ReactNode } from "react";
 import { useState } from "react";
-import { BarChart3, CalendarDays, CheckCircle2, ClipboardList, Dumbbell, HeartPulse, ShieldCheck, Zap } from "lucide-react";
+import { BarChart3, CalendarDays, CheckCircle2, ChevronDown, ClipboardList, Dumbbell, HeartPulse, ShieldCheck, Zap } from "lucide-react";
 import { ExercisePrescription, GeneratedProgram, LanguageMode, ProgramDay } from "../../types";
 import { Card } from "../ui/Base";
 
@@ -107,9 +107,9 @@ function DayCard({ day, languageMode }: { day: ProgramDay; languageMode: Languag
       </div>
 
       <div className="grid gap-5 p-4">
-        <ExerciseSection title="Warm-up" icon={<HeartPulse className="h-4 w-4" />} exercises={day.warmup} languageMode={languageMode} />
-        <ExerciseSection title="Power / Speed" icon={<Zap className="h-4 w-4" />} exercises={day.powerSpeed} languageMode={languageMode} />
-        <ExerciseSection title="Strength" icon={<Dumbbell className="h-4 w-4" />} exercises={day.strength} languageMode={languageMode} />
+        <ExerciseSection title="Warm-up" icon={<HeartPulse className="h-4 w-4" />} exercises={day.warmup} languageMode={languageMode} defaultOpen />
+        <ExerciseSection title="Power / Speed" icon={<Zap className="h-4 w-4" />} exercises={day.powerSpeed} languageMode={languageMode} defaultOpen />
+        <ExerciseSection title="Strength" icon={<Dumbbell className="h-4 w-4" />} exercises={day.strength} languageMode={languageMode} defaultOpen />
         <ExerciseSection title="Accessory" icon={<ClipboardList className="h-4 w-4" />} exercises={day.accessory} languageMode={languageMode} />
         <ExerciseSection title="Conditioning" icon={<HeartPulse className="h-4 w-4" />} exercises={day.conditioning} languageMode={languageMode} />
         <ExerciseSection title="Mobility / Prehab" icon={<ShieldCheck className="h-4 w-4" />} exercises={day.mobilityPrehab} languageMode={languageMode} />
@@ -156,21 +156,40 @@ function ExerciseSection({
   icon,
   exercises,
   languageMode,
+  defaultOpen = false,
 }: {
   title: string;
   icon: ReactNode;
   exercises: ExercisePrescription[];
   languageMode: LanguageMode;
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+
   if (!exercises.length) return null;
 
   return (
     <section className="grid gap-2">
-      <div className="flex items-center gap-2 border-b border-zinc-800 pb-2 text-zinc-400">
+      <div className="hidden items-center gap-2 border-b border-zinc-800 pb-2 text-zinc-400 md:flex">
         {icon}
         <h4 className="text-xs font-bold uppercase">{title}</h4>
       </div>
-      <div className="grid gap-2 md:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-black/45 px-3 py-2 text-left text-zinc-300 transition hover:border-zinc-600 md:hidden"
+        aria-expanded={open}
+      >
+        <span className="flex items-center gap-2">
+          {icon}
+          <span>
+            <span className="block text-xs font-bold uppercase text-white">{title}</span>
+            <span className="block text-[11px] text-zinc-500">{exercises.length} items</span>
+          </span>
+        </span>
+        <ChevronDown className={`h-4 w-4 text-zinc-500 transition ${open ? "rotate-180 text-amber-200" : ""}`} />
+      </button>
+      <div className={`${open ? "grid" : "hidden"} gap-2 md:hidden`}>
         {exercises.map((exercise, index) => (
           <div key={`${exercise.name}-mobile-${index}`} className="rounded-lg border border-zinc-800 bg-black/55 p-3">
             <p className="font-semibold text-white">{exercise.name}</p>
