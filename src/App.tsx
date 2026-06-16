@@ -901,16 +901,16 @@ export default function App() {
   }, [dataLoaded, account?.id, allSavedAthletes, allSavedPrograms, allTrainingLogs, allTeams, allMemberships, allTestHistory]);
 
   return (
-    <div className="min-h-screen px-3 py-4 text-zinc-300 sm:px-5 md:px-8">
+    <div className="min-h-screen px-3 py-4 text-[var(--bbp-text)] sm:px-5 md:px-8">
       <div className="mx-auto grid max-w-7xl gap-5">
-        <header className="sticky top-0 z-20 grid gap-4 rounded-lg border border-zinc-800/80 bg-black/82 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur lg:grid-cols-[300px_1fr] lg:items-center">
+        <header className="sticky top-0 z-20 grid gap-4 rounded-lg border border-[var(--bbp-border)] bg-[linear-gradient(180deg,rgba(8,12,16,0.92),rgba(8,12,16,0.82))] p-3 shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur lg:grid-cols-[300px_1fr] lg:items-center">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-amber-300 text-zinc-950 shadow-[0_12px_30px_rgba(252,211,77,0.18)]">
+            <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[#e8fbff] shadow-[0_12px_30px_rgba(84,200,255,0.14)]">
               <Shield className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-lg font-black uppercase leading-none tracking-normal text-white">Black Bear</h1>
-              <p className="text-[10px] font-bold uppercase text-zinc-500">Performance S&C</p>
+              <h1 className="font-display text-lg font-black uppercase leading-none text-white">Black Bear</h1>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted)]">Combat Performance System</p>
             </div>
           </div>
           <div className="grid gap-2">
@@ -930,12 +930,12 @@ export default function App() {
                     aria-disabled={!enabled}
                     className={`flex min-h-10 items-center justify-center gap-2 rounded-md border px-2 text-[10px] font-bold uppercase transition ${
                       active
-                        ? "border-amber-300 bg-amber-300 text-zinc-950"
+                        ? "border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[var(--bbp-text)]"
                         : completed
-                          ? "border-emerald-900/70 bg-emerald-950/30 text-emerald-200"
+                          ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
                           : enabled
-                            ? "border-zinc-800 bg-zinc-950/70 text-zinc-500 hover:border-zinc-600 hover:text-zinc-200"
-                            : "cursor-not-allowed border-zinc-950 text-zinc-700 opacity-50"
+                            ? "border-[var(--bbp-border)] bg-[rgba(7,11,15,0.8)] text-[var(--bbp-muted)] hover:border-[var(--bbp-border-strong)] hover:text-[var(--bbp-text)]"
+                            : "cursor-not-allowed border-[rgba(255,255,255,0.03)] text-[rgba(150,167,184,0.35)] opacity-50"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -945,14 +945,14 @@ export default function App() {
               })}
             </nav>
             <div className="grid gap-1">
-              <div className="flex items-center justify-between text-[10px] font-bold uppercase text-zinc-500">
+              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted)]">
                 <span>Onboarding progress</span>
                 <span>
                   Step {step}/{steps.length}
                 </span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-zinc-900">
-                <div className="h-full rounded-full bg-gradient-to-r from-amber-300 via-emerald-300 to-zinc-100 transition-all duration-500" style={{ width: `${(step / steps.length) * 100}%` }} />
+              <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
+                <div className="h-full rounded-full bg-gradient-to-r from-[#67cfff] via-[#86dfbf] to-[#eef7ff] transition-all duration-500" style={{ width: `${(step / steps.length) * 100}%` }} />
               </div>
             </div>
           </div>
@@ -978,20 +978,20 @@ export default function App() {
           />
 
           {step === 1 && (
-            <ScreenShell eyebrow="Step 1" title="Control room" description="Log in, choose coach or athlete mode, then continue to the fighter profile. Stable athlete data stays saved so the next block starts faster.">
+            <ScreenShell eyebrow="Step 1" title="Performance system" description="Log in, choose coach or athlete mode, then continue to the fighter profile. Stable athlete data stays saved so the next block starts faster.">
               <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-                <Card className="premium-reveal grid gap-5 border-amber-300/20 bg-[linear-gradient(145deg,rgba(24,24,27,0.96),rgba(9,9,11,0.98))]">
-                  <div className="grid gap-3 border-b border-zinc-800/80 pb-4 md:grid-cols-[1fr_auto] md:items-end">
+                <Card className="premium-reveal grid gap-5 border-[var(--bbp-border-strong)] bg-[linear-gradient(145deg,rgba(13,20,27,0.98),rgba(7,11,16,0.98))]">
+                  <div className="grid gap-3 border-b border-[var(--bbp-border)] pb-4 md:grid-cols-[1fr_auto] md:items-end">
                     <div>
-                      <p className="text-[11px] font-bold uppercase text-amber-300">Combat sports training builder</p>
-                      <h2 className="mt-2 max-w-3xl text-2xl font-black tracking-normal text-white md:text-4xl">Build the plan once. Run the training week from the portal.</h2>
-                      <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c7f4ff]">Combat performance operating system</p>
+                      <h2 className="font-display mt-2 max-w-3xl text-3xl font-black text-white md:text-5xl">Build the block. Run the week. Track the fighter.</h2>
+                      <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--bbp-muted)]">
                         Ukrainian and English outputs, coach teams, athlete logs, checkpoint tests, and OTA-style export in one workflow.
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        <StatusPill tone="gold" label="Combat S&C" />
-                        <StatusPill tone="green" label="Coach + athlete portal" />
-                        <StatusPill tone="red" label="Risk-aware programming" />
+                        <StatusPill tone="gold" label="Combat S&C logic" />
+                        <StatusPill tone="green" label="Coach + athlete workspace" />
+                        <StatusPill tone="red" label="Risk-aware planning" />
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center">
@@ -1104,14 +1104,23 @@ export default function App() {
                           aria-label={`Select combat profile: ${PROFILE_COPY[profile].title}`}
                           onClick={() => setCombatProfile(profile)}
                           className={`grid min-h-[180px] gap-3 rounded-lg border p-4 text-left transition ${
-                            active ? "border-amber-300 bg-amber-300 text-zinc-950 shadow-[0_16px_42px_rgba(252,211,77,0.16)]" : "border-zinc-800 bg-black/60 text-zinc-400 hover:border-zinc-500"
+                            active
+                              ? "border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[var(--bbp-text)] shadow-[0_16px_42px_rgba(84,200,255,0.12)]"
+                              : "border-[var(--bbp-border)] bg-[rgba(7,10,14,0.72)] text-[var(--bbp-muted)] hover:border-[var(--bbp-border-strong)]"
                           }`}
                         >
                           <h3 className="text-sm font-black uppercase">{PROFILE_COPY[profile].title}</h3>
-                          <p className={`text-sm leading-5 ${active ? "text-zinc-700" : "text-zinc-500"}`}>{PROFILE_COPY[profile].summary}</p>
+                          <p className={`text-sm leading-5 ${active ? "text-[var(--bbp-text)]" : "text-[var(--bbp-muted)]"}`}>{PROFILE_COPY[profile].summary}</p>
                           <div className="flex flex-wrap gap-1">
                             {PROFILE_COPY[profile].emphasis.map((tag) => (
-                              <span key={tag} className={`rounded border px-2 py-1 text-[10px] font-bold uppercase ${active ? "border-zinc-900/20 bg-zinc-950/5" : "border-zinc-800 bg-zinc-950/60"}`}>
+                              <span
+                                key={tag}
+                                className={`rounded border px-2 py-1 text-[10px] font-bold uppercase ${
+                                  active
+                                    ? "border-[var(--bbp-border-strong)] bg-[rgba(255,255,255,0.05)] text-[#e9fbff]"
+                                    : "border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)]"
+                                }`}
+                              >
                                 {tag}
                               </span>
                             ))}
@@ -1130,7 +1139,7 @@ export default function App() {
                     <Input label="Hard wrestling" type="number" value={combatLoad.hardGrapplingDays} onChange={(value) => updateCombatLoad("hardGrapplingDays", value)} min={0} />
                     <Input label="Technical" type="number" value={combatLoad.technicalSessions} onChange={(value) => updateCombatLoad("technicalSessions", value)} min={0} />
                   </div>
-                  <p className="rounded-md border border-amber-300/20 bg-amber-300/5 p-3 text-sm leading-6 text-zinc-300">
+                  <p className="rounded-md border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] p-3 text-sm leading-6 text-[var(--bbp-text)]">
                     {profileSummary.title}: {profileSummary.summary}
                   </p>
                 </Card>
@@ -1183,7 +1192,7 @@ export default function App() {
                 <SavedProgramsPanel programs={savedPrograms} onLoad={loadProgramRecord} onDelete={deleteProgramRecord} />
                 <Checklist title="Equipment" items={EQUIPMENT} selected={athleteProfile.equipment} onToggle={(value) => toggleListValue("equipment", value)} />
                 <Checklist title="Pain / risk flags" items={PAIN_AREAS} selected={athleteProfile.painAreas} onToggle={(value) => toggleListValue("painAreas", value)} />
-                <Card className="border-amber-300/20 bg-amber-300/5 text-sm leading-6 text-zinc-300">
+                <Card className="border-[rgba(255,128,139,0.28)] bg-[rgba(255,128,139,0.08)] text-sm leading-6 text-[var(--bbp-text)]">
                   This tool does not diagnose injuries. Acute pain, neurological symptoms, concussion signs, chest pain, or severe dizziness require qualified medical assessment.
                 </Card>
                 <div className="flex flex-wrap justify-between gap-3">
@@ -1372,18 +1381,18 @@ function AccountPanel({
   };
   const syncTone =
     syncStatus === "synced"
-      ? "border-emerald-700 text-emerald-300"
+      ? "border-emerald-400/30 text-emerald-200"
       : syncStatus === "offline" || syncStatus === "error"
-        ? "border-amber-700 text-amber-300"
-        : "border-zinc-700 text-zinc-300";
+        ? "border-[rgba(255,128,139,0.28)] text-[#ffd5da]"
+        : "border-[var(--bbp-border)] text-[var(--bbp-muted)]";
 
   if (account) {
     return (
-      <div className="grid gap-3 rounded-lg border border-emerald-900/60 bg-emerald-950/15 p-4 md:grid-cols-[1fr_auto] md:items-center">
+      <div className="grid gap-3 rounded-lg border border-emerald-400/25 bg-[var(--bbp-success-soft)] p-4 md:grid-cols-[1fr_auto] md:items-center">
         <div>
-          <p className="text-[11px] font-bold uppercase text-emerald-300">Signed in</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-200">Signed in</p>
           <p className="mt-1 font-bold text-white">{account.name}</p>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-[var(--bbp-muted)]">
             {account.email} / {account.role}
           </p>
           <span className={`mt-2 inline-flex w-fit rounded border px-2 py-1 text-[10px] font-bold uppercase ${syncTone}`}>
@@ -1405,10 +1414,10 @@ function AccountPanel({
   }
 
   return (
-    <div className="grid gap-3 rounded-lg border border-zinc-800 bg-black/55 p-4">
+    <div className="grid gap-3 rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.78)] p-4">
       <div>
-        <p className="text-[11px] font-bold uppercase text-amber-300">Account</p>
-        <p className="mt-1 text-sm leading-5 text-zinc-400">Register or log in so athletes and logs stay attached to you.</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c7f4ff]">Account</p>
+        <p className="mt-1 text-sm leading-5 text-[var(--bbp-muted)]">Register or log in so athletes and logs stay attached to you.</p>
         <span className={`mt-2 inline-flex w-fit rounded border px-2 py-1 text-[10px] font-bold uppercase ${syncTone}`}>
           Data: {syncCopy[syncStatus]}
         </span>
@@ -1518,15 +1527,15 @@ function StartWorkbenchCard({
         <p>{programs.length ? "Start the latest training plan directly, or go to Athlete step for the full database." : "Create or load an athlete, then generate the first block."}</p>
         <p>Outputs: 4, 8, or 12 weeks with notes, zones, checkpoints, readiness, CSV and Excel export.</p>
       </div>
-      <div className="grid gap-3 rounded-lg border border-zinc-800 bg-black/45 p-3">
+      <div className="grid gap-3 rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.68)] p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase text-zinc-500">Today</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">Today</p>
             <p className="mt-1 text-sm font-semibold text-white">{latestProgram ? `Open ${latestProgram.athleteName}'s latest block` : "Create first athlete plan"}</p>
           </div>
-          <Clock3 className="h-4 w-4 text-amber-200" />
+          <Clock3 className="h-4 w-4 text-[#c7f4ff]" />
         </div>
-        <p className="text-xs leading-5 text-zinc-500">
+        <p className="text-xs leading-5 text-[var(--bbp-muted)]">
           {latestProgram
             ? `${latestProgram.programSettings.lengthWeeks} weeks / ${latestProgram.programSettings.scDaysPerWeek} S&C days / ${latestProgram.programSettings.phase}`
             : "Register, choose fighter type, add assessment numbers, then generate the first professional sheet."}
@@ -1587,22 +1596,22 @@ function StartWorkbenchCard({
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-zinc-800 bg-zinc-950/70 p-3">
+    <div className="rounded-md border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] p-3">
       <p className="text-xl font-black text-white">{value}</p>
-      <p className="mt-1 text-[10px] font-bold uppercase text-zinc-500">{label}</p>
+      <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">{label}</p>
     </div>
   );
 }
 
 function StatusPill({ label, tone = "zinc" }: { label: string; tone?: "gold" | "green" | "red" | "zinc" }) {
   const tones = {
-    gold: "border-amber-300/30 bg-amber-300/10 text-amber-200",
+    gold: "border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[#dff8ff]",
     green: "border-emerald-400/25 bg-emerald-400/10 text-emerald-200",
-    red: "border-red-400/25 bg-red-500/10 text-red-200",
-    zinc: "border-zinc-700 bg-zinc-900/80 text-zinc-300",
+    red: "border-[rgba(255,128,139,0.32)] bg-[rgba(255,128,139,0.12)] text-[#ffd5da]",
+    zinc: "border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] text-[var(--bbp-muted)]",
   };
 
-  return <span className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase ${tones[tone]}`}>{label}</span>;
+  return <span className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] ${tones[tone]}`}>{label}</span>;
 }
 
 function PremiumWorkflow() {
@@ -1618,12 +1627,12 @@ function PremiumWorkflow() {
       {items.map((item) => {
         const Icon = item.icon;
         return (
-          <div key={item.title} className="group rounded-lg border border-zinc-800 bg-black/35 p-3 transition hover:border-amber-300/40 hover:bg-black/55">
-            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950 text-amber-200 transition group-hover:border-amber-300/40">
+          <div key={item.title} className="group rounded-lg border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.025)] p-3 transition hover:border-[var(--bbp-border-strong)] hover:bg-[rgba(255,255,255,0.04)]">
+            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] text-[#dff8ff] transition group-hover:border-[var(--bbp-border-strong)]">
               <Icon className="h-4 w-4" />
             </div>
             <p className="text-xs font-black uppercase text-white">{item.title}</p>
-            <p className="mt-2 text-xs leading-5 text-zinc-500">{item.copy}</p>
+            <p className="mt-2 text-xs leading-5 text-[var(--bbp-muted)]">{item.copy}</p>
           </div>
         );
       })}
@@ -1633,13 +1642,13 @@ function PremiumWorkflow() {
 
 function MiniBarChart({ values, max }: { values: number[]; max: number }) {
   return (
-    <div className="flex h-20 items-end gap-1 rounded-md border border-zinc-800 bg-black/45 p-2">
+    <div className="flex h-20 items-end gap-1 rounded-md border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] p-2">
       {values.map((value, index) => {
         const height = Math.max(12, Math.min(100, (value / max) * 100));
         return (
           <div key={`${value}-${index}`} className="flex h-full flex-1 items-end">
             <div
-              className="w-full rounded-t bg-gradient-to-t from-emerald-600 to-amber-200 shadow-[0_0_18px_rgba(16,185,129,0.15)]"
+              className="w-full rounded-t bg-gradient-to-t from-[#6de0c0] via-[#67cfff] to-[#dff8ff] shadow-[0_0_18px_rgba(84,200,255,0.15)]"
               style={{ height: `${height}%` }}
               aria-label={`Readiness ${value} of ${max}`}
             />
@@ -1652,12 +1661,12 @@ function MiniBarChart({ values, max }: { values: number[]; max: number }) {
 
 function DashboardMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-black/45 p-3">
+    <div className="rounded-lg border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] p-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-amber-200">{icon}</div>
+        <div className="text-[#c7f4ff]">{icon}</div>
         <p className="text-2xl font-black text-white">{value}</p>
       </div>
-      <p className="mt-2 text-[10px] font-bold uppercase text-zinc-500">{label}</p>
+      <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">{label}</p>
     </div>
   );
 }
@@ -1859,34 +1868,34 @@ function GeminiPanel({
   return (
     <Card className="grid gap-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-amber-300/30 bg-amber-300/10 text-amber-200">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[#dff8ff]">
           <Sparkles className="h-4 w-4" />
         </div>
         <div>
           <h3 className="text-sm font-bold uppercase text-white">Gemini coach check</h3>
-          <p className="mt-1 text-xs leading-5 text-zinc-500">
+          <p className="mt-1 text-xs leading-5 text-[var(--bbp-muted)]">
             Backend-only AI helper. The structured OTA-style sheet remains the source of truth.
           </p>
         </div>
       </div>
       <label className="grid gap-1.5">
-        <span className="text-[11px] font-bold uppercase text-zinc-500">Question</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted-strong)]">Question</span>
         <textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           maxLength={1200}
           placeholder="Ask for coach notes, risk flags, or a plain-language athlete explanation."
-          className="min-h-24 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/15"
+          className="min-h-24 rounded-md border border-[var(--bbp-border)] bg-[rgba(7,11,15,0.9)] px-3 py-2 text-sm text-[var(--bbp-text)] outline-none transition placeholder:text-[var(--bbp-muted-strong)] focus:border-[var(--bbp-accent-strong)] focus:ring-2 focus:ring-[var(--bbp-accent-ring)]"
         />
       </label>
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={onAsk} disabled={!account || loading}>
           {loading ? "Asking..." : "Ask Gemini"} <Send className="h-4 w-4" />
         </Button>
-        <p className="text-xs text-zinc-600">{account ? "Uses server GEMINI_API_KEY with rate limit." : "Log in to use AI."}</p>
+        <p className="text-xs text-[var(--bbp-muted-strong)]">{account ? "Uses server GEMINI_API_KEY with rate limit." : "Log in to use AI."}</p>
       </div>
       {error && <p className="rounded-lg border border-red-900 bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
-      {response && <div className="whitespace-pre-wrap rounded-lg border border-zinc-800 bg-black/60 p-4 text-sm leading-6 text-zinc-200">{response}</div>}
+      {response && <div className="whitespace-pre-wrap rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.78)] p-4 text-sm leading-6 text-[var(--bbp-text)]">{response}</div>}
     </Card>
   );
 }
@@ -2000,12 +2009,12 @@ function TrainingLogPanel({
         <Input label="Pain / restriction" value={draft.painNote} onChange={(value) => setDraft((current) => ({ ...current, painNote: String(value) }))} placeholder="Shoulder tight / knee OK / none" />
       </div>
       <label className="grid gap-1.5">
-        <span className="text-[11px] font-bold uppercase text-zinc-500">Training diary</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted-strong)]">Training diary</span>
         <textarea
           value={draft.notes}
           onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
           placeholder="What was done, what changed, how athlete felt, what coach should adjust"
-          className="min-h-24 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/15"
+          className="min-h-24 rounded-md border border-[var(--bbp-border)] bg-[rgba(7,11,15,0.9)] px-3 py-2 text-sm text-[var(--bbp-text)] outline-none transition placeholder:text-[var(--bbp-muted-strong)] focus:border-[var(--bbp-accent-strong)] focus:ring-2 focus:ring-[var(--bbp-accent-ring)]"
         />
       </label>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2066,7 +2075,7 @@ function CurrentSummary({
   programSettings: ProgramSettings;
 }) {
   return (
-    <div className="mb-5 grid gap-2 rounded-lg border border-zinc-800/80 bg-black/45 p-3 text-xs shadow-[0_10px_30px_rgba(0,0,0,0.18)] md:grid-cols-6">
+    <div className="mb-5 grid gap-2 rounded-lg border border-[var(--bbp-border)] bg-[rgba(8,12,16,0.72)] p-3 text-xs shadow-[0_10px_30px_rgba(0,0,0,0.18)] md:grid-cols-6">
       <SummaryItem label="Account" value={account ? account.name : "Not signed in"} />
       <SummaryItem label="Mode" value={`${userMode} / ${languageMode.toUpperCase().replace("_", "+")}`} />
       <SummaryItem label="Fighter" value={athleteProfile.name || "Not set"} />
@@ -2109,12 +2118,12 @@ function NextActionBar({
       : "No account yet";
 
   return (
-    <div className="mb-5 grid gap-3 rounded-lg border border-amber-300/20 bg-amber-300/5 p-3 md:grid-cols-[auto_1fr_auto] md:items-center">
-      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-300 text-zinc-950">
+    <div className="mb-5 grid gap-3 rounded-lg border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] p-3 md:grid-cols-[auto_1fr_auto] md:items-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-md border border-[var(--bbp-border-strong)] bg-[rgba(255,255,255,0.05)] text-[#dff8ff]">
         <Target className="h-5 w-5" />
       </div>
       <div>
-        <p className="text-[11px] font-bold uppercase text-amber-200">Next best action</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#dff8ff]">Next best action</p>
         <p className="mt-1 text-sm font-semibold text-white">{label}</p>
       </div>
       <StatusPill tone={program ? "green" : account ? "gold" : "zinc"} label={detail} />
@@ -2125,8 +2134,8 @@ function NextActionBar({
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase text-zinc-600">{label}</p>
-      <p className="mt-1 truncate font-semibold text-zinc-200">{value}</p>
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">{label}</p>
+      <p className="mt-1 truncate font-semibold text-[var(--bbp-text)]">{value}</p>
     </div>
   );
 }
@@ -2149,9 +2158,9 @@ function PriorityPanel({
           <div key={score.id} className="rounded-lg border border-zinc-800 bg-black/55 p-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs font-bold uppercase text-white">{score.label}</p>
-              <span className="rounded bg-amber-300 px-2 py-1 text-xs font-black text-zinc-950">{score.score}/5</span>
+              <span className="rounded border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] px-2 py-1 text-xs font-black text-[#e7fbff]">{score.score}/5</span>
             </div>
-            <p className="mt-2 text-xs leading-5 text-zinc-500">
+            <p className="mt-2 text-xs leading-5 text-[var(--bbp-muted)]">
               {languageMode !== "en" && score.reasonUa}
               {languageMode === "ua_en" ? " / " : ""}
               {languageMode !== "ua" && score.reasonEn}
@@ -2278,9 +2287,9 @@ function ScreenShell({
   return (
     <section className="premium-reveal grid gap-5">
       <div className="grid gap-1">
-        <p className="text-[11px] font-bold uppercase text-amber-300">{eyebrow}</p>
-        <h2 className="max-w-4xl text-2xl font-black tracking-normal text-white md:text-3xl">{title}</h2>
-        <p className="max-w-3xl text-sm leading-6 text-zinc-500">{description}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c7f4ff]">{eyebrow}</p>
+        <h2 className="font-display max-w-4xl text-3xl font-black text-white md:text-4xl">{title}</h2>
+        <p className="max-w-3xl text-sm leading-6 text-[var(--bbp-muted)]">{description}</p>
       </div>
       {children}
     </section>
@@ -2323,7 +2332,9 @@ function Checklist({
               type="button"
               onClick={() => onToggle(item)}
               className={`rounded-md border px-3 py-2 text-left text-xs font-semibold transition ${
-                active ? "border-amber-300 bg-amber-300 text-zinc-950" : "border-zinc-800 bg-black/55 text-zinc-500 hover:border-zinc-600 hover:text-zinc-200"
+                active
+                  ? "border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[var(--bbp-text)]"
+                  : "border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] text-[var(--bbp-muted)] hover:border-[var(--bbp-border-strong)] hover:text-[var(--bbp-text)]"
               }`}
             >
               {item}

@@ -40,7 +40,7 @@ type SegmentedControlProps = {
 export const Card = ({ children, className = "", id }: CardProps) => (
   <section
     id={id}
-    className={`rounded-lg border border-zinc-800/80 bg-zinc-950/85 p-5 shadow-[0_16px_50px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.03] transition duration-200 hover:border-zinc-700/90 ${className}`}
+    className={`rounded-lg border border-[var(--bbp-border)] bg-[linear-gradient(180deg,rgba(14,20,27,0.96),rgba(8,12,17,0.98))] p-5 shadow-[0_22px_60px_rgba(0,0,0,0.32)] ring-1 ring-white/[0.04] transition duration-200 hover:border-[var(--bbp-border-strong)] ${className}`}
   >
     {children}
   </section>
@@ -56,10 +56,13 @@ export const Button = ({
   type = "button",
 }: ButtonProps) => {
   const variants = {
-    primary: "bg-amber-300 text-zinc-950 shadow-[0_10px_28px_rgba(252,211,77,0.18)] hover:bg-amber-200",
-    secondary: "bg-zinc-800 text-white hover:bg-zinc-700",
-    outline: "border border-zinc-700/80 bg-zinc-950/40 text-zinc-300 hover:border-zinc-500 hover:bg-zinc-900 hover:text-white",
-    danger: "bg-red-700 text-white hover:bg-red-800",
+    primary:
+      "border border-[#c8f4ff]/45 bg-[linear-gradient(180deg,#e7fbff,#97e3ff)] text-[#071118] shadow-[0_14px_34px_rgba(84,200,255,0.22)] hover:brightness-105",
+    secondary:
+      "border border-[var(--bbp-border)] bg-[rgba(12,19,26,0.9)] text-[var(--bbp-text)] hover:border-[var(--bbp-border-strong)] hover:bg-[rgba(16,25,35,0.96)]",
+    outline:
+      "border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.58)] text-[var(--bbp-muted)] hover:border-[var(--bbp-border-strong)] hover:bg-[rgba(12,18,24,0.85)] hover:text-[var(--bbp-text)]",
+    danger: "border border-[rgba(255,128,139,0.32)] bg-[rgba(255,128,139,0.12)] text-[#ffd8dc] hover:bg-[rgba(255,128,139,0.18)]",
   };
 
   return (
@@ -87,7 +90,7 @@ export const Input = ({
   max,
 }: InputProps) => (
   <label className={`grid gap-1.5 ${className}`}>
-    {label && <span className="text-[11px] font-bold uppercase text-zinc-500">{label}</span>}
+    {label && <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted-strong)]">{label}</span>}
     <input
       id={id}
       type={type}
@@ -99,15 +102,15 @@ export const Input = ({
         onChange(type === "number" ? (nextValue === "" ? "" : Number(nextValue)) : nextValue);
       }}
       placeholder={placeholder}
-      className="h-11 rounded-md border border-zinc-800 bg-zinc-950 px-3 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-amber-300 focus:ring-2 focus:ring-amber-300/15"
+      className="h-11 rounded-md border border-[var(--bbp-border)] bg-[rgba(7,11,15,0.9)] px-3 text-sm text-[var(--bbp-text)] outline-none transition placeholder:text-[var(--bbp-muted-strong)] focus:border-[var(--bbp-accent-strong)] focus:ring-2 focus:ring-[var(--bbp-accent-ring)]"
     />
   </label>
 );
 
 export const SegmentedControl = ({ options, value, onChange, label, id, disabled = false }: SegmentedControlProps) => (
   <div id={id} className="grid gap-2">
-    {label && <span className="text-[11px] font-bold uppercase text-zinc-500">{label}</span>}
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-1 rounded-lg border border-zinc-800 bg-black/70 p-1">
+    {label && <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted-strong)]">{label}</span>}
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(88px,1fr))] gap-1 rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.76)] p-1">
       {options.map((option) => (
         <button
           key={option.value}
@@ -115,7 +118,9 @@ export const SegmentedControl = ({ options, value, onChange, label, id, disabled
           disabled={disabled}
           onClick={() => onChange(option.value)}
           className={`min-h-9 rounded-md px-3 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-50 ${
-            value === option.value ? "bg-amber-300 text-zinc-950" : "text-zinc-500 hover:bg-zinc-900 hover:text-zinc-200"
+            value === option.value
+              ? "border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[var(--bbp-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
+              : "text-[var(--bbp-muted)] hover:bg-[rgba(255,255,255,0.03)] hover:text-[var(--bbp-text)]"
           }`}
         >
           {option.label}

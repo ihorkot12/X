@@ -12,6 +12,7 @@ export const ProgramDashboard = ({
   languageMode: LanguageMode;
 }) => {
   const [activeWeek, setActiveWeek] = useState(0);
+  const [activeMobileDay, setActiveMobileDay] = useState(0);
   const week = program.weeks[activeWeek];
   const nextSession = week?.days[0];
 
@@ -19,46 +20,51 @@ export const ProgramDashboard = ({
 
   return (
     <div className="grid gap-5">
-      <div className="grid gap-2 rounded-lg border border-zinc-800 bg-black/45 p-2 md:grid-cols-[auto_1fr] md:items-center">
+      <div className="grid gap-2 rounded-lg border border-[var(--bbp-border)] bg-[rgba(8,12,16,0.72)] p-2 md:grid-cols-[auto_1fr] md:items-center">
         <div className="px-2">
-          <p className="text-[11px] font-bold uppercase text-amber-300">Program weeks</p>
-          <p className="text-xs text-zinc-500">Tap a week to review sessions</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c5f4ff]">Program weeks</p>
+          <p className="text-xs text-[var(--bbp-muted)]">Tap a week to review sessions</p>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 md:justify-end md:pb-0">
-        {program.weeks.map((item, index) => (
-          <button
-            key={item.week}
-            type="button"
-            onClick={() => setActiveWeek(index)}
-            className={`min-w-[96px] rounded-md border px-3 py-2 text-left text-xs font-bold uppercase transition ${
-              activeWeek === index ? "border-amber-300 bg-amber-300 text-zinc-950" : "border-zinc-800 bg-zinc-950 text-zinc-500 hover:text-zinc-200"
-            }`}
-          >
-            <span className="block">Week {item.week}</span>
-            <span className="block text-[9px] opacity-70">{item.isCheckpoint ? "Checkpoint" : item.blockName}</span>
-          </button>
-        ))}
+          {program.weeks.map((item, index) => (
+            <button
+              key={item.week}
+              type="button"
+              onClick={() => {
+                setActiveWeek(index);
+                setActiveMobileDay(0);
+              }}
+              className={`min-w-[96px] rounded-md border px-3 py-2 text-left text-xs font-bold uppercase transition ${
+                activeWeek === index
+                  ? "border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[var(--bbp-text)]"
+                  : "border-[var(--bbp-border)] bg-[rgba(7,11,15,0.92)] text-[var(--bbp-muted)] hover:border-[var(--bbp-border-strong)] hover:text-[var(--bbp-text)]"
+              }`}
+            >
+              <span className="block">Week {item.week}</span>
+              <span className="block text-[9px] opacity-70">{item.isCheckpoint ? "Checkpoint" : item.blockName}</span>
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[320px_1fr]">
-        <Card className="grid content-start gap-4 border-amber-300/20 bg-[linear-gradient(145deg,rgba(24,24,27,0.96),rgba(12,10,7,0.96))]">
+        <Card className="grid content-start gap-4 border-[var(--bbp-border-strong)] bg-[linear-gradient(145deg,rgba(14,22,30,0.98),rgba(7,12,18,0.98))]">
           <div>
-            <p className="text-[11px] font-bold uppercase text-amber-300">Active block</p>
-            <h3 className="mt-1 text-xl font-black text-white">{week.blockName}</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-300">{week.focus}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c5f4ff]">Active block</p>
+            <h3 className="font-display mt-1 text-xl font-black text-white">{week.blockName}</h3>
+            <p className="mt-2 text-sm leading-6 text-[var(--bbp-muted)]">{week.focus}</p>
           </div>
           <div className="grid grid-cols-2 gap-2 text-center">
-            <div className="rounded-md border border-zinc-800 bg-black/45 p-3">
+            <div className="rounded-md border border-[var(--bbp-border)] bg-[rgba(5,9,13,0.48)] p-3">
               <p className="text-xl font-black text-white">{week.days.length}</p>
-              <p className="text-[10px] font-bold uppercase text-zinc-500">sessions</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">sessions</p>
             </div>
-            <div className="rounded-md border border-zinc-800 bg-black/45 p-3">
+            <div className="rounded-md border border-[var(--bbp-border)] bg-[rgba(5,9,13,0.48)] p-3">
               <p className="text-xl font-black text-white">{week.isCheckpoint ? "Test" : "Build"}</p>
-              <p className="text-[10px] font-bold uppercase text-zinc-500">week type</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">week type</p>
             </div>
           </div>
-          <div className="grid gap-3 border-t border-zinc-800 pt-4 text-sm leading-6 text-zinc-300">
+          <div className="grid gap-3 border-t border-[var(--bbp-border)] pt-4 text-sm leading-6 text-[var(--bbp-muted)]">
             <p>
               <span className="font-semibold text-white">Rule:</span> every 4th week reduces load and becomes a testing/checkpoint week.
             </p>
@@ -67,46 +73,92 @@ export const ProgramDashboard = ({
             </p>
           </div>
           {nextSession && (
-            <div className="rounded-lg border border-amber-300/20 bg-amber-300/5 p-3">
-              <div className="flex items-center gap-2 text-amber-200">
+            <div className="rounded-lg border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] p-3">
+              <div className="flex items-center gap-2 text-[#c9f5ff]">
                 <CalendarDays className="h-4 w-4" />
-                <p className="text-[11px] font-bold uppercase">Next session</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em]">Next session</p>
               </div>
               <p className="mt-2 text-sm font-black text-white">{nextSession.day}</p>
-              <p className="mt-1 text-sm leading-5 text-zinc-300">{nextSession.sessionGoal}</p>
+              <p className="mt-1 text-sm leading-5 text-[var(--bbp-muted)]">{nextSession.sessionGoal}</p>
             </div>
           )}
           <WeeklyLoadChart days={week.days} />
         </Card>
 
         <div className="grid gap-4">
-          {week.days.map((day) => (
-            <DayCard key={day.day} day={day} languageMode={languageMode} />
-          ))}
+          <div className="grid gap-2 md:hidden">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">Training days</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#c9f5ff]">Show one day at a time</p>
+            </div>
+            <div className="grid grid-cols-3 gap-1 rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.72)] p-1">
+              {week.days.map((day, index) => (
+                <button
+                  key={`${day.day}-tab`}
+                  type="button"
+                  onClick={() => setActiveMobileDay(index)}
+                  className={`min-h-10 rounded-md px-2 py-2 text-[11px] font-bold uppercase transition ${
+                    activeMobileDay === index
+                      ? "border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[var(--bbp-text)]"
+                      : "text-[var(--bbp-muted)] hover:bg-[rgba(255,255,255,0.03)] hover:text-[var(--bbp-text)]"
+                  }`}
+                >
+                  {day.day}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="md:hidden">
+            <DayCard day={week.days[activeMobileDay]} languageMode={languageMode} defaultOpen />
+          </div>
+          <div className="hidden gap-4 md:grid">
+            {week.days.map((day, index) => (
+              <DayCard key={day.day} day={day} languageMode={languageMode} defaultOpen={index === 0} />
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-function DayCard({ day, languageMode }: { day: ProgramDay; languageMode: LanguageMode; key?: Key }) {
+function DayCard({ day, languageMode, defaultOpen = false }: { day: ProgramDay; languageMode: LanguageMode; key?: Key; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const totalExercises = [day.warmup, day.powerSpeed, day.strength, day.accessory, day.conditioning, day.mobilityPrehab].reduce(
+    (sum, section) => sum + section.length,
+    0,
+  );
+
   return (
     <Card className="overflow-hidden p-0">
-      <div className="grid gap-2 border-b border-zinc-800 bg-zinc-950/90 px-4 py-3 md:grid-cols-[1fr_minmax(220px,0.8fr)] md:items-center">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        className="grid w-full gap-2 border-b border-[var(--bbp-border)] bg-[rgba(7,11,15,0.95)] px-4 py-3 text-left transition hover:bg-[rgba(9,14,19,0.98)] md:pointer-events-none md:grid-cols-[1fr_minmax(220px,0.8fr)] md:items-center"
+        aria-expanded={open}
+      >
         <div>
-          <h3 className="font-bold text-white">
-            {day.day}: {day.sessionGoal}
-          </h3>
-          <p className="text-xs uppercase text-zinc-600">{day.block}</p>
+          <div className="flex items-center justify-between gap-3 md:block">
+            <h3 className="font-bold text-white">
+              {day.day}: {day.sessionGoal}
+            </h3>
+            <div className="flex items-center gap-2 md:hidden">
+              <span className="rounded-full border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] px-2 py-1 text-[10px] font-bold uppercase text-[var(--bbp-muted)]">
+                {totalExercises} items
+              </span>
+              <ChevronDown className={`h-4 w-4 text-[var(--bbp-muted)] transition ${open ? "rotate-180 text-[#c9f5ff]" : ""}`} />
+            </div>
+          </div>
+          <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">{day.block}</p>
         </div>
-        <div className="rounded-md border border-zinc-800 bg-black/35 p-2 text-xs leading-5 text-zinc-400">
+        <div className="rounded-md border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.02)] p-2 text-xs leading-5 text-[var(--bbp-muted)]">
           {languageMode !== "en" && day.coachNotesUa && <span>{day.coachNotesUa}</span>}
           {languageMode === "ua_en" && day.coachNotesUa && day.coachNotesEn && <span> / </span>}
           {languageMode !== "ua" && day.coachNotesEn && <span>{day.coachNotesEn}</span>}
         </div>
-      </div>
+      </button>
 
-      <div className="grid gap-5 p-4">
+      <div className={`${open ? "grid" : "hidden"} gap-5 p-4 md:grid`}>
         <ExerciseSection title="Warm-up" icon={<HeartPulse className="h-4 w-4" />} exercises={day.warmup} languageMode={languageMode} defaultOpen />
         <ExerciseSection title="Power / Speed" icon={<Zap className="h-4 w-4" />} exercises={day.powerSpeed} languageMode={languageMode} defaultOpen />
         <ExerciseSection title="Strength" icon={<Dumbbell className="h-4 w-4" />} exercises={day.strength} languageMode={languageMode} defaultOpen />
@@ -126,24 +178,24 @@ function WeeklyLoadChart({ days }: { days: ProgramDay[] }) {
   const max = Math.max(...values, 1);
 
   return (
-    <div className="grid gap-3 rounded-lg border border-zinc-800 bg-black/35 p-3">
+    <div className="grid gap-3 rounded-lg border border-[var(--bbp-border)] bg-[rgba(6,10,14,0.72)] p-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-zinc-300">
-          <BarChart3 className="h-4 w-4 text-emerald-200" />
-          <p className="text-[11px] font-bold uppercase">Weekly density</p>
+        <div className="flex items-center gap-2 text-[var(--bbp-text)]">
+          <BarChart3 className="h-4 w-4 text-[#c5f4ff]" />
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em]">Weekly density</p>
         </div>
-        <CheckCircle2 className="h-4 w-4 text-zinc-600" />
+        <CheckCircle2 className="h-4 w-4 text-[var(--bbp-muted-strong)]" />
       </div>
       <div className="flex h-20 items-end gap-2">
         {values.map((value, index) => (
           <div key={`${value}-${index}`} className="grid flex-1 gap-1">
-            <div className="flex h-16 items-end rounded bg-zinc-950 p-1">
+            <div className="flex h-16 items-end rounded bg-[rgba(255,255,255,0.03)] p-1">
               <div
-                className="w-full rounded-t bg-gradient-to-t from-emerald-600 to-amber-200"
+                className="w-full rounded-t bg-gradient-to-t from-[#6de0c0] via-[#67cfff] to-[#dff8ff]"
                 style={{ height: `${Math.max(18, (value / max) * 100)}%` }}
               />
             </div>
-            <p className="text-center text-[10px] font-bold uppercase text-zinc-600">D{index + 1}</p>
+            <p className="text-center text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">D{index + 1}</p>
           </div>
         ))}
       </div>
@@ -170,37 +222,39 @@ function ExerciseSection({
 
   return (
     <section className="grid gap-2">
-      <div className="hidden items-center gap-2 border-b border-zinc-800 pb-2 text-zinc-400 md:flex">
+      <div className="hidden items-center gap-2 border-b border-[var(--bbp-border)] pb-2 text-[var(--bbp-muted)] md:flex">
         {icon}
         <h4 className="text-xs font-bold uppercase">{title}</h4>
       </div>
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
-        className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-zinc-800 bg-black/45 px-3 py-2 text-left text-zinc-300 transition hover:border-zinc-600 md:hidden"
+        className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.72)] px-3 py-2 text-left text-[var(--bbp-text)] transition hover:border-[var(--bbp-border-strong)] md:hidden"
         aria-expanded={open}
       >
         <span className="flex items-center gap-2">
           {icon}
           <span>
             <span className="block text-xs font-bold uppercase text-white">{title}</span>
-            <span className="block text-[11px] text-zinc-500">{exercises.length} items</span>
+            <span className="block text-[11px] text-[var(--bbp-muted)]">{exercises.length} items</span>
           </span>
         </span>
-        <ChevronDown className={`h-4 w-4 text-zinc-500 transition ${open ? "rotate-180 text-amber-200" : ""}`} />
+        <ChevronDown className={`h-4 w-4 text-[var(--bbp-muted)] transition ${open ? "rotate-180 text-[#c9f5ff]" : ""}`} />
       </button>
       <div className={`${open ? "grid" : "hidden"} gap-2 md:hidden`}>
         {exercises.map((exercise, index) => (
-          <div key={`${exercise.name}-mobile-${index}`} className="rounded-lg border border-zinc-800 bg-black/55 p-3">
+          <div key={`${exercise.name}-mobile-${index}`} className="rounded-lg border border-[var(--bbp-border)] bg-[rgba(6,10,14,0.82)] p-3">
             <p className="font-semibold text-white">{exercise.name}</p>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-zinc-400">
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-[var(--bbp-muted)]">
               <Metric label="Sets" value={exercise.sets || "-"} />
               <Metric label="Reps" value={exercise.reps || "-"} />
               <Metric label="Tempo" value={exercise.tempo || "-"} />
               <Metric label="Rest" value={exercise.rest || "-"} />
             </div>
-            <p className="mt-2 rounded border border-zinc-800 bg-zinc-950 p-2 text-xs leading-5 text-zinc-300">{exercise.intensity || "Coach-selected intensity"}</p>
-            <div className="mt-2 text-xs leading-5 text-zinc-400">
+            <p className="mt-2 rounded border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] p-2 text-xs leading-5 text-[var(--bbp-text)]">
+              {exercise.intensity || "Coach-selected intensity"}
+            </p>
+            <div className="mt-2 text-xs leading-5 text-[var(--bbp-muted)]">
               {languageMode !== "en" && exercise.notesUa && <p>{exercise.notesUa}</p>}
               {languageMode !== "ua" && exercise.notesEn && <p>{exercise.notesEn}</p>}
             </div>
@@ -210,7 +264,7 @@ function ExerciseSection({
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[720px] border-collapse text-sm">
           <thead>
-            <tr className="text-left text-[10px] uppercase text-zinc-600">
+            <tr className="text-left text-[10px] uppercase text-[var(--bbp-muted-strong)]">
               <th className="py-2 pr-3">Exercise</th>
               <th className="py-2 pr-3">Sets</th>
               <th className="py-2 pr-3">Reps</th>
@@ -222,14 +276,14 @@ function ExerciseSection({
           </thead>
           <tbody>
             {exercises.map((exercise, index) => (
-              <tr key={`${exercise.name}-${index}`} className="border-t border-zinc-900 align-top">
+              <tr key={`${exercise.name}-${index}`} className="border-t border-[rgba(255,255,255,0.04)] align-top">
                 <td className="py-2 pr-3 font-semibold text-white">{exercise.name}</td>
-                <td className="py-2 pr-3 text-zinc-400">{exercise.sets || "-"}</td>
-                <td className="py-2 pr-3 text-zinc-400">{exercise.reps || "-"}</td>
-                <td className="py-2 pr-3 text-zinc-400">{exercise.tempo || "-"}</td>
-                <td className="py-2 pr-3 text-zinc-400">{exercise.rest || "-"}</td>
-                <td className="py-2 pr-3 text-zinc-400">{exercise.intensity || "-"}</td>
-                <td className="max-w-[340px] py-2 pr-3 text-xs leading-5 text-zinc-400">
+                <td className="py-2 pr-3 text-[var(--bbp-muted)]">{exercise.sets || "-"}</td>
+                <td className="py-2 pr-3 text-[var(--bbp-muted)]">{exercise.reps || "-"}</td>
+                <td className="py-2 pr-3 text-[var(--bbp-muted)]">{exercise.tempo || "-"}</td>
+                <td className="py-2 pr-3 text-[var(--bbp-muted)]">{exercise.rest || "-"}</td>
+                <td className="py-2 pr-3 text-[var(--bbp-muted)]">{exercise.intensity || "-"}</td>
+                <td className="max-w-[340px] py-2 pr-3 text-xs leading-5 text-[var(--bbp-muted)]">
                   {languageMode !== "en" && exercise.notesUa && <p>{exercise.notesUa}</p>}
                   {languageMode !== "ua" && exercise.notesEn && <p>{exercise.notesEn}</p>}
                 </td>
@@ -244,9 +298,9 @@ function ExerciseSection({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border border-zinc-800 bg-zinc-950 p-2">
-      <p className="text-[10px] font-bold uppercase text-zinc-600">{label}</p>
-      <p className="mt-1 font-semibold text-zinc-200">{value}</p>
+    <div className="rounded border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] p-2">
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">{label}</p>
+      <p className="mt-1 font-semibold text-[var(--bbp-text)]">{value}</p>
     </div>
   );
 }

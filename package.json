@@ -9,7 +9,7 @@
     "preview": "vite preview --host=0.0.0.0 --port=4173",
     "serve": "node -e \"process.env.NODE_ENV='production'; import('./server.mjs')\"",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "cmd /c node .\\node_modules\\typescript\\bin\\tsc --noEmit"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

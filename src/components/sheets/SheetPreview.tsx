@@ -102,15 +102,15 @@ export const SheetPreview = ({
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
-      <div className="grid gap-3 border-b border-zinc-800 bg-zinc-900/90 p-3 lg:grid-cols-[1fr_auto] lg:items-center">
+    <div className="overflow-hidden rounded-lg border border-[var(--bbp-border)] bg-[rgba(8,12,17,0.92)] shadow-[0_22px_60px_rgba(0,0,0,0.32)]">
+      <div className="grid gap-3 border-b border-[var(--bbp-border)] bg-[rgba(10,16,22,0.94)] p-3 lg:grid-cols-[1fr_auto] lg:items-center">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-600 text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[#dff8ff]">
             <Table className="h-4 w-4" />
           </div>
           <div>
             <p className="text-sm font-bold text-white">BBP_Program_Export</p>
-            <p className="text-xs text-zinc-500">Google Sheets structure preview</p>
+            <p className="text-xs text-[var(--bbp-muted)]">Google Sheets structure preview</p>
           </div>
         </div>
         <Button disabled className="w-full lg:w-auto">
@@ -118,14 +118,16 @@ export const SheetPreview = ({
         </Button>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto border-b border-zinc-800 bg-black/75 p-2">
+      <div className="flex gap-1 overflow-x-auto border-b border-[var(--bbp-border)] bg-[rgba(6,9,13,0.78)] p-2">
         {tabs.map((tab) => (
           <button
             key={tab.name}
             type="button"
             onClick={() => setActiveTab(tab.name)}
             className={`whitespace-nowrap rounded-md border px-3 py-1.5 text-[11px] font-semibold transition ${
-              activeTab === tab.name ? "border-amber-300 bg-amber-300 text-zinc-950" : "border-zinc-800 text-zinc-500 hover:text-zinc-200"
+              activeTab === tab.name
+                ? "border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[var(--bbp-text)]"
+                : "border-[var(--bbp-border)] text-[var(--bbp-muted)] hover:text-[var(--bbp-text)]"
             }`}
           >
             {tab.name}
@@ -151,8 +153,8 @@ export const SheetPreview = ({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-900/90 p-3">
-        <p className="text-xs leading-5 text-zinc-500">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--bbp-border)] bg-[rgba(10,16,22,0.94)] p-3">
+        <p className="text-xs leading-5 text-[var(--bbp-muted)]">
           Final MVP output should generate this as a styled Google Sheet with profile, tests, weekly plan, notes, zones, checkpoints, and readiness.
         </p>
         <div className="flex flex-wrap items-center gap-3">
@@ -165,7 +167,7 @@ export const SheetPreview = ({
           <Button variant="secondary" onClick={downloadExcelWorkbook}>
             Download Excel workbook
           </Button>
-          <div className="flex items-center gap-2 text-xs font-bold uppercase text-zinc-500">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted)]">
             <FileSpreadsheet className="h-4 w-4" /> OTA-style structure, Black Bear logic
           </div>
         </div>
