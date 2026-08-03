@@ -552,6 +552,16 @@
   line-height: 1.45;
 }
 
+.bbwf-demo-note {
+  margin: 0;
+  border-left: 2px solid var(--bbwf-gold);
+  padding: 10px 12px;
+  background: rgba(167, 131, 67, 0.08);
+  color: var(--bbwf-graphite-700);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .bbwf-actions {
   display: flex;
   justify-content: space-between;
@@ -1206,9 +1216,8 @@
   }
 
   .bbwf-welcome-layout {
-    display: grid;
+    display: block;
     min-height: calc(100dvh - 50px);
-    grid-template-columns: minmax(450px, 0.94fr) minmax(360px, 0.78fr);
   }
 
   .bbwf-content--welcome {
@@ -1231,9 +1240,9 @@
   }
 
   .bbwf-hero {
-    min-height: 100%;
-    border-top: 0;
-    border-left: 1px solid var(--bbwf-line);
+    min-height: 360px;
+    border-top: 1px solid var(--bbwf-line);
+    border-left: 0;
   }
 
   .bbwf-stage-header h1 {
@@ -1288,6 +1297,17 @@
   .bbwf-rail {
     padding-right: 31px;
     padding-left: 31px;
+  }
+
+  .bbwf-welcome-layout {
+    display: grid;
+    grid-template-columns: minmax(450px, 0.94fr) minmax(360px, 0.78fr);
+  }
+
+  .bbwf-hero {
+    min-height: 100%;
+    border-top: 0;
+    border-left: 1px solid var(--bbwf-line);
   }
 }
 

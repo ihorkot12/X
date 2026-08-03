@@ -90,7 +90,7 @@ export const ProgramDashboard = ({
           <div className="grid gap-2 md:hidden">
             <div className="flex items-center justify-between gap-3">
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">Дні тренувань</p>
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#c9f5ff]">Один день за раз</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#c9f5ff]">Перегляд по одному дню</p>
             </div>
             <div className="grid grid-cols-3 gap-1 rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.72)] p-1">
               {week.days.map((day, index) => (

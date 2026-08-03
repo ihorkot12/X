@@ -375,7 +375,7 @@ export default function App() {
     setHighestStepReached((current) => Math.max(current, entryMode === "register" ? 2 : 1));
   };
 
-  const handleAuth = async (request?: AuthRequest): Promise<boolean> => {
+  const handleAuth = async (request?: AuthRequest): Promise<string | null> => {
     const requestedForm = request ?? {
       ...authForm,
       mode: authMode,
@@ -393,7 +393,7 @@ export default function App() {
     if (remoteSyncEnabled && requestedMode === "register" && !name) errors.push("Введіть ім'я, щоб створити обліковий запис.");
     if (!remoteSyncEnabled && !name && !accounts.some((item) => item.email === email)) errors.push("Введіть ім'я, щоб створити обліковий запис.");
     setFormErrors(errors);
-    if (errors.length) return false;
+    if (errors.length) return errors.join(" ");
 
     if (remoteSyncEnabled) {
       setAuthLoading(true);
@@ -408,10 +408,11 @@ export default function App() {
               role: requestedRole,
             });
         finishAuthentication(toStoredAccount(authenticated), requestedMode);
-        return true;
+        return null;
       } catch (error) {
-        setAuthError(error instanceof Error ? error.message : "Не вдалося виконати вхід. Повторіть спробу.");
-        return false;
+        const message = error instanceof Error ? error.message : "Не вдалося виконати вхід. Повторіть спробу.";
+        setAuthError(message);
+        return message;
       } finally {
         setAuthForm((current) => ({ ...current, password: "" }));
         setAuthLoading(false);
@@ -431,7 +432,7 @@ export default function App() {
       } satisfies UserAccount);
 
     finishAuthentication(nextAccount, existing ? "login" : "register");
-    return true;
+    return null;
   };
 
   const completeWelcomeFlow = async (data: WelcomeFlowData) => {
@@ -440,14 +441,28 @@ export default function App() {
     setUserMode(role);
     setAuthMode(nextMode);
     setAuthForm({ name: data.displayName, email: data.email, password: data.password });
-    const authenticated = await handleAuth({
+    if (data.sessionsPerWeek) {
+      const scDaysPerWeek = Math.min(data.sessionsPerWeek, 4) as ProgramSettings["scDaysPerWeek"];
+      const mainGoalByIntent: Record<NonNullable<WelcomeFlowData["intent"]>, string> = {
+        performance: "Strength & Power",
+        strength: "Maximum Strength",
+        movement: "Mobility & Stability",
+        return: "Return to Performance",
+      };
+      setProgramSettings((current) => ({
+        ...current,
+        scDaysPerWeek,
+        ...(data.intent ? { mainGoal: mainGoalByIntent[data.intent] } : {}),
+      }));
+    }
+    const authenticationError = await handleAuth({
       name: data.displayName,
       email: data.email,
       password: data.password,
       mode: nextMode,
       role,
     });
-    if (!authenticated) throw new Error("Authentication failed");
+    if (authenticationError) throw new Error(authenticationError);
   };
 
   const clearAuthenticatedState = () => {
@@ -1126,6 +1141,7 @@ export default function App() {
         onSignIn={() => setAuthMode("login")}
         onComplete={completeWelcomeFlow}
         isSubmitting={authLoading}
+        requiresPassword={remoteSyncEnabled}
       />
     );
   }
@@ -1769,7 +1785,7 @@ function StartWorkbenchCard({
         <p className="mt-2 text-sm leading-6 text-zinc-400">
           {account
             ? "Продовжуйте роботу зі спортсменами, відкривайте програми або починайте нове оцінювання."
-            : "Структура Google Sheets у форматі OTA з логікою Black Bear для єдиноборств."}
+            : "Таблична структура за зразком OTA з логікою Black Bear для єдиноборств."}
         </p>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
@@ -1803,7 +1819,7 @@ function StartWorkbenchCard({
         <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-bold uppercase text-zinc-500">
           <span>Виконано {doneLogs}</span>
           <span>Змінено {modifiedLogs}</span>
-          <span>План {plannedLogs}</span>
+          <span>Заплановано {plannedLogs}</span>
           <span>Пропущено {skippedLogs}</span>
         </div>
       </div>
@@ -2101,7 +2117,7 @@ function GeminiPanel({
         <div>
           <h3 className="text-sm font-bold uppercase text-white">Перевірка плану через Gemini</h3>
           <p className="mt-1 text-xs leading-5 text-[var(--bbp-muted)]">
-            Помічник працює лише на сервері. Структурована таблиця у форматі OTA залишається основою програми.
+            Помічник працює лише на сервері. Таблична структура за зразком OTA залишається основою програми.
           </p>
         </div>
       </div>

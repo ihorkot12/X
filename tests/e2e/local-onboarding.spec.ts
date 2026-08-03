@@ -23,21 +23,21 @@ test("an athlete can complete the local onboarding workflow", async ({ page }) =
   ).toBeVisible();
   await page.getByRole("button", { name: "Почати налаштування" }).click();
   await page.getByText("Покращити результат", { exact: true }).click();
-  await page.locator('label:has(input[name="sessionsPerWeek"][value="3"])').click();
+  await page.locator('label:has(input[name="sessionsPerWeek"][value="4"])').click();
   await page.getByRole("button", { name: "Продовжити" }).click();
 
   await page.getByLabel("Ваше ім’я").fill("Локальний тестовий спортсмен");
   await page.getByLabel("Електронна пошта").fill("local-athlete@example.test");
-  await page.getByLabel("Пароль", { exact: true }).fill("testing-pass-2026");
   await page.getByText("Погоджуюся з умовами", { exact: false }).click();
   await page.getByRole("button", { name: "Продовжити" }).click();
 
-  await page.getByText("Athlete", { exact: true }).click();
+  await page.getByText("Спортсмен", { exact: true }).click();
   await page.getByRole("button", { name: "Продовжити" }).click();
   await page.getByRole("button", { name: "Підтвердити й завершити" }).click();
 
   await expect(page.getByRole("heading", { name: "Бойовий профіль" })).toBeVisible();
   await expect(page.getByText("Тижневе бойове навантаження", { exact: true })).toBeVisible();
+  await expect(page.getByText("8 тиж. / 4 дні", { exact: true })).toBeVisible();
 
   const viewportFits = await page.evaluate(
     () => document.documentElement.scrollWidth <= window.innerWidth + 1,

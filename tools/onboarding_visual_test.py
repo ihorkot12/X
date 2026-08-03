@@ -4,7 +4,7 @@ from playwright.sync_api import expect, sync_playwright
 
 
 ROOT = Path(__file__).resolve().parents[1]
-URL = "http://127.0.0.1:4176"
+URL = "http://127.0.0.1:4173"
 ARTIFACTS = ROOT / "design-screenshots" / "current"
 
 
@@ -15,10 +15,9 @@ def register(page, email: str) -> None:
     page.get_by_role("button", name="Продовжити").click()
     page.get_by_label("Ваше ім’я").fill("Тестовий спортсмен")
     page.get_by_label("Електронна пошта").fill(email)
-    page.get_by_label("Пароль", exact=True).fill("testing-pass-2026")
     page.get_by_text("Погоджуюся з умовами", exact=False).click()
     page.get_by_role("button", name="Продовжити").click()
-    page.get_by_text("Athlete", exact=True).click()
+    page.get_by_text("Спортсмен", exact=True).click()
     page.get_by_role("button", name="Продовжити").click()
     page.get_by_role("button", name="Підтвердити й завершити").click()
     expect(page.get_by_role("heading", name="Бойовий профіль")).to_be_visible()
@@ -89,7 +88,6 @@ def run_login(browser) -> None:
     page.reload(wait_until="networkidle")
     page.get_by_role("button", name="У мене вже є акаунт").click()
     page.get_by_label("Електронна пошта").fill("login@example.com")
-    page.get_by_label("Пароль", exact=True).fill("testing-pass-2026")
     page.get_by_role("button", name="Увійти").click()
     expect(page.get_by_role("heading", name="Кабінет: Login спортсмен")).to_be_visible()
     assert_page_health(page, errors)

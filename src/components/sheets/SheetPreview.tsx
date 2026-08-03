@@ -181,7 +181,7 @@ export const SheetPreview = ({
             Завантажити книгу Excel
           </Button>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted)]">
-            <FileSpreadsheet className="h-4 w-4" /> Структура OTA, логіка Black Bear
+            <FileSpreadsheet className="h-4 w-4" /> Таблична структура за зразком OTA · логіка Black Bear
           </div>
         </div>
       </div>

@@ -78,6 +78,8 @@ export interface WelcomeFlowProps {
   onSignIn?: () => void;
   onFinish?: (value: WelcomeFlowData) => void;
   isSubmitting?: boolean;
+  /** False in the browser-only demo where accounts are not password protected. */
+  requiresPassword?: boolean;
   className?: string;
 }
 
@@ -125,7 +127,7 @@ const INTENTS: ReadonlyArray<{
   },
   {
     value: "strength",
-    label: "Стати сильніше",
+    label: "Підвищити силу",
     description: "Будувати силу через послідовне навантаження.",
     icon: Dumbbell,
   },
@@ -145,15 +147,15 @@ const INTENTS: ReadonlyArray<{
 
 const ROLE_COPY: Record<
   WelcomeFlowRole,
-  { name: "Athlete" | "Coach"; description: string; icon: typeof UserRound }
+  { name: string; description: string; icon: typeof UserRound }
 > = {
   athlete: {
-    name: "Athlete",
+    name: "Спортсмен",
     description: "Тренувальний план, готовність і особистий прогрес в одному місці.",
     icon: UserRound,
   },
   coach: {
-    name: "Coach",
+    name: "Тренер",
     description: "Спортсмени, програми й сигнали навантаження у спільному робочому просторі.",
     icon: UsersRound,
   },
@@ -197,6 +199,7 @@ export function WelcomeFlow({
   onSignIn,
   onFinish,
   isSubmitting = false,
+  requiresPassword = true,
   className,
 }: WelcomeFlowProps) {
   const [internalData, setInternalData] = useState<WelcomeFlowData>(() =>
@@ -288,7 +291,7 @@ export function WelcomeFlow({
       if (!validateEmail(data.email.trim())) {
         nextErrors.email = "Перевірте адресу електронної пошти.";
       }
-      if (data.password.length < 10 || data.password.length > 128) {
+      if (requiresPassword && (data.password.length < 10 || data.password.length > 128)) {
         nextErrors.password = "Пароль має містити від 10 до 128 символів.";
       }
       if (data.authMode === "register" && !data.acceptedTerms) {
@@ -327,9 +330,12 @@ export function WelcomeFlow({
     try {
       await onComplete?.(data);
       goToStep("completion");
-    } catch {
+    } catch (error) {
+      updateData({ password: "" });
       setErrors({
-        submit: "Не вдалося завершити налаштування. Спробуйте ще раз.",
+        submit: error instanceof Error && error.message
+          ? error.message
+          : "Не вдалося завершити налаштування. Спробуйте ще раз.",
       });
     } finally {
       setPending(false);
@@ -382,7 +388,7 @@ export function WelcomeFlow({
 
           <div className="bbwf-rail-note">
             <ShieldCheck aria-hidden="true" size={17} strokeWidth={1.7} />
-            <span>Дані профілю захищені та належать вам.</span>
+            <span>{requiresPassword ? "Дані профілю захищені та належать вам." : "Демо-дані зберігаються у цьому браузері."}</span>
           </div>
         </aside>
 
@@ -522,12 +528,20 @@ export function WelcomeFlow({
                 <header className="bbwf-stage-header">
                   <p className="bbwf-eyebrow">{data.authMode === "login" ? "Вхід до профілю" : "Деталі профілю"}</p>
                   <h1 id="bbwf-heading-details" ref={headingRef} tabIndex={-1}>
-                    {data.authMode === "login" ? "Продовжуйте з того місця, де зупинилися." : "Створімо ваш захищений профіль."}
+                    {data.authMode === "login"
+                      ? "Продовжуйте з того місця, де зупинилися."
+                      : requiresPassword
+                        ? "Створімо ваш захищений профіль."
+                        : "Створімо ваш локальний профіль."}
                   </h1>
                   <p>
                     {data.authMode === "login"
-                      ? "Введіть дані доступу до Black Bear Performance."
-                      : "Ми використаємо ці дані лише для доступу та персоналізації простору."}
+                      ? requiresPassword
+                        ? "Введіть дані доступу до Black Bear Performance."
+                        : "Введіть електронну адресу локального профілю в цьому браузері."
+                      : requiresPassword
+                        ? "Ми використаємо ці дані лише для доступу та персоналізації простору."
+                        : "Демо-профіль зберігатиметься лише у цьому браузері."}
                   </p>
                 </header>
 
@@ -538,6 +552,7 @@ export function WelcomeFlow({
                       <span className="bbwf-input-wrap">
                         <UserRound aria-hidden="true" size={18} />
                         <input
+                          aria-describedby={errors.displayName ? "bbwf-display-name-error" : undefined}
                           aria-invalid={Boolean(errors.displayName)}
                           autoComplete="name"
                           autoFocus
@@ -548,7 +563,7 @@ export function WelcomeFlow({
                           value={data.displayName}
                         />
                       </span>
-                      {errors.displayName && <small className="bbwf-error" role="alert">{errors.displayName}</small>}
+                      {errors.displayName && <small id="bbwf-display-name-error" className="bbwf-error" role="alert">{errors.displayName}</small>}
                     </label>
                   )}
 
@@ -557,6 +572,7 @@ export function WelcomeFlow({
                     <span className="bbwf-input-wrap">
                       <Mail aria-hidden="true" size={18} />
                       <input
+                        aria-describedby={errors.email ? "bbwf-email-error" : undefined}
                         aria-invalid={Boolean(errors.email)}
                         autoComplete="email"
                         autoFocus={data.authMode === "login"}
@@ -568,35 +584,42 @@ export function WelcomeFlow({
                         value={data.email}
                       />
                     </span>
-                    {errors.email && <small className="bbwf-error" role="alert">{errors.email}</small>}
+                    {errors.email && <small id="bbwf-email-error" className="bbwf-error" role="alert">{errors.email}</small>}
                   </label>
 
-                  <label className="bbwf-field bbwf-field--full">
-                    <span>Пароль</span>
-                    <span className="bbwf-input-wrap">
-                      <LockKeyhole aria-hidden="true" size={18} />
-                      <input
-                        aria-invalid={Boolean(errors.password)}
-                        autoComplete={data.authMode === "login" ? "current-password" : "new-password"}
-                        maxLength={128}
-                        minLength={10}
-                        onChange={(event) => updateData({ password: event.target.value })}
-                        placeholder="Від 10 до 128 символів"
-                        required
-                        type={showPassword ? "text" : "password"}
-                        value={data.password}
-                      />
-                      <button
-                        aria-label={showPassword ? "Сховати пароль" : "Показати пароль"}
-                        className="bbwf-input-action"
-                        onClick={() => setShowPassword((visible) => !visible)}
-                        type="button"
-                      >
-                        {showPassword ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
-                      </button>
-                    </span>
-                    {errors.password && <small className="bbwf-error" role="alert">{errors.password}</small>}
-                  </label>
+                  {requiresPassword ? (
+                    <label className="bbwf-field bbwf-field--full">
+                      <span>Пароль</span>
+                      <span className="bbwf-input-wrap">
+                        <LockKeyhole aria-hidden="true" size={18} />
+                        <input
+                          aria-describedby={errors.password ? "bbwf-password-error" : undefined}
+                          aria-invalid={Boolean(errors.password)}
+                          autoComplete={data.authMode === "login" ? "current-password" : "new-password"}
+                          maxLength={128}
+                          minLength={10}
+                          onChange={(event) => updateData({ password: event.target.value })}
+                          placeholder="Від 10 до 128 символів"
+                          required
+                          type={showPassword ? "text" : "password"}
+                          value={data.password}
+                        />
+                        <button
+                          aria-label={showPassword ? "Сховати пароль" : "Показати пароль"}
+                          className="bbwf-input-action"
+                          onClick={() => setShowPassword((visible) => !visible)}
+                          type="button"
+                        >
+                          {showPassword ? <EyeOff aria-hidden="true" size={18} /> : <Eye aria-hidden="true" size={18} />}
+                        </button>
+                      </span>
+                      {errors.password && <small id="bbwf-password-error" className="bbwf-error" role="alert">{errors.password}</small>}
+                    </label>
+                  ) : (
+                    <p className="bbwf-demo-note bbwf-field--full">
+                      Демо-доступ зберігається лише у цьому браузері й не використовує пароль.
+                    </p>
+                  )}
 
                   {data.authMode === "register" && (
                     <>
@@ -631,7 +654,7 @@ export function WelcomeFlow({
                   <h1 id="bbwf-heading-role" ref={headingRef} tabIndex={-1}>
                     Як ви використовуватимете платформу?
                   </h1>
-                  <p>Ми підлаштуємо перший екран, навігацію та ключові показники.</p>
+                  <p>Ми налаштуємо перший екран, навігацію та ключові показники під вашу роль.</p>
                 </header>
 
                 <fieldset className="bbwf-fieldset" aria-describedby={errors.role ? "bbwf-role-error" : undefined}>
@@ -664,7 +687,7 @@ export function WelcomeFlow({
 
                 <div className="bbwf-role-note">
                   <ShieldCheck aria-hidden="true" size={18} />
-                  <p><strong>Роль не обмежує профіль.</strong> Її можна змінити в налаштуваннях.</p>
+                  <p><strong>Вибір ролі не обмежує доступ до профілю.</strong> Її можна змінити в налаштуваннях.</p>
                 </div>
 
                 <StepActions onBack={goBack} />
@@ -685,9 +708,9 @@ export function WelcomeFlow({
 
                 <div className="bbwf-summary" aria-label="Підсумок налаштувань">
                   <div><span>Профіль</span><strong>{data.displayName}</strong></div>
-                  <div><span>Роль</span><strong>{data.role ? ROLE_COPY[data.role].name : "Athlete"}</strong></div>
+                  <div><span>Роль</span><strong>{data.role ? ROLE_COPY[data.role].name : "Спортсмен"}</strong></div>
                   <div><span>Напрям</span><IntentPreview intent={data.intent} /></div>
-                  <div><span>Ритм</span><strong>{data.sessionsPerWeek} тренування на тиждень</strong></div>
+                  <div><span>Ритм</span><strong>{data.sessionsPerWeek} на тиждень</strong></div>
                 </div>
 
                 {errors.submit && <p className="bbwf-submit-error" role="alert">{errors.submit}</p>}
@@ -726,7 +749,7 @@ export function WelcomeFlow({
                   <BadgeCheck aria-hidden="true" size={20} />
                   <span>
                     <small>{data.authMode === "login" ? "Активний профіль" : "Активний режим"}</small>
-                    <strong>{data.authMode === "login" ? data.email : data.role ? ROLE_COPY[data.role].name : "Athlete"}</strong>
+                    <strong>{data.authMode === "login" ? data.email : data.role ? ROLE_COPY[data.role].name : "Спортсмен"}</strong>
                   </span>
                 </div>
 
@@ -769,7 +792,7 @@ function StepActions({ busy = false, nextLabel = "Продовжити", onBack 
 
 function AthletePreview() {
   return (
-    <div className="bbwf-product-preview" aria-label="Приклад простору Athlete">
+    <div className="bbwf-product-preview" aria-label="Приклад простору спортсмена">
       <div className="bbwf-preview-topline">
         <span><CalendarDays aria-hidden="true" size={16} />Сьогодні</span>
         <span className="bbwf-status">План готовий</span>
@@ -797,7 +820,7 @@ function AthletePreview() {
 
 function CoachPreview() {
   return (
-    <div className="bbwf-product-preview" aria-label="Приклад простору Coach">
+    <div className="bbwf-product-preview" aria-label="Приклад простору тренера">
       <div className="bbwf-preview-topline">
         <span><UsersRound aria-hidden="true" size={16} />Команда</span>
         <span className="bbwf-status">12 активних</span>
