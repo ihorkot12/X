@@ -73,7 +73,7 @@
     color: #17140d;
   }
 
-  :where(button, input, textarea, a, [tabindex]):focus-visible {
+  :where(button, input, textarea, a, [tabindex]:not([tabindex="-1"])):focus-visible {
     outline: 2px solid var(--bbp-accent-strong) !important;
     outline-offset: 2px;
   }

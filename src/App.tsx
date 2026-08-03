@@ -57,6 +57,7 @@ import { AssessmentInputs } from "./components/forms/AssessmentInputs";
 import { ProgramDashboard } from "./components/program/ProgramDashboard";
 import { SheetPreview } from "./components/sheets/SheetPreview";
 import { Button, Card, Input, SegmentedControl } from "./components/ui/Base";
+import { WelcomeFlow, type WelcomeFlowData } from "./components/onboarding/WelcomeFlow";
 
 const SPORTS = ["MMA", "Karate", "Kickboxing", "Boxing", "Wrestling", "Sambo", "Judo", "BJJ", "Muay Thai", "Other"];
 const EQUIPMENT = ["Barbell", "Dumbbells", "Kettlebells", "Machines", "Pull-up Bar", "Sled", "Bike", "Rower", "Treadmill", "Med Balls", "Bands", "Mat Only"];
@@ -72,6 +73,13 @@ const TEST_HISTORY_STORAGE_KEY = "bbp_test_history_v1";
 
 type AuthMode = "login" | "register";
 type StoredAccount = UserAccount & { serverRole?: AccountRole };
+type AuthRequest = {
+  name: string;
+  email: string;
+  password: string;
+  mode: AuthMode;
+  role: "athlete" | "coach";
+};
 
 function toStoredAccount(account: AuthAccount): StoredAccount {
   return {
@@ -200,7 +208,7 @@ export default function App() {
   const [aiLoading, setAiLoading] = useState(false);
 
   const steps = [
-    { name: "Початок", icon: Shield },
+    { name: "Кабінет", icon: Shield },
     { name: "Бій", icon: Target },
     { name: "Спортсмен", icon: User },
     { name: "Параметри", icon: Activity },
@@ -354,7 +362,7 @@ export default function App() {
     window.localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(accountsToStore));
   };
 
-  const finishAuthentication = (nextAccount: StoredAccount) => {
+  const finishAuthentication = (nextAccount: StoredAccount, entryMode: AuthMode = "login") => {
     saveAccounts([nextAccount, ...accounts.filter((item) => item.id !== nextAccount.id && item.email !== nextAccount.email)]);
     setAccount(nextAccount);
     setUserMode(nextAccount.role);
@@ -363,41 +371,51 @@ export default function App() {
     else window.localStorage.setItem(SESSION_STORAGE_KEY, nextAccount.id);
     setAuthError("");
     setFormErrors([]);
+    setStep(entryMode === "register" ? 2 : 1);
+    setHighestStepReached((current) => Math.max(current, entryMode === "register" ? 2 : 1));
   };
 
-  const handleAuth = async () => {
-    const email = authForm.email.trim().toLowerCase();
-    const name = authForm.name.trim();
+  const handleAuth = async (request?: AuthRequest): Promise<boolean> => {
+    const requestedForm = request ?? {
+      ...authForm,
+      mode: authMode,
+      role: userMode === "coach" ? "coach" as const : "athlete" as const,
+    };
+    const email = requestedForm.email.trim().toLowerCase();
+    const name = requestedForm.name.trim();
+    const requestedMode = requestedForm.mode;
+    const requestedRole = requestedForm.role;
     const errors: string[] = [];
     if (!email || !email.includes("@")) errors.push("Введіть коректну електронну адресу.");
-    if (remoteSyncEnabled && (authForm.password.length < 10 || authForm.password.length > 128)) {
+    if (remoteSyncEnabled && (requestedForm.password.length < 10 || requestedForm.password.length > 128)) {
       errors.push("Пароль має містити від 10 до 128 символів.");
     }
-    if (remoteSyncEnabled && authMode === "register" && !name) errors.push("Введіть ім'я, щоб створити обліковий запис.");
+    if (remoteSyncEnabled && requestedMode === "register" && !name) errors.push("Введіть ім'я, щоб створити обліковий запис.");
     if (!remoteSyncEnabled && !name && !accounts.some((item) => item.email === email)) errors.push("Введіть ім'я, щоб створити обліковий запис.");
     setFormErrors(errors);
-    if (errors.length) return;
+    if (errors.length) return false;
 
     if (remoteSyncEnabled) {
       setAuthLoading(true);
       setAuthError("");
       try {
-        const authenticated = authMode === "login"
-          ? await loginAccount({ email, password: authForm.password })
+        const authenticated = requestedMode === "login"
+          ? await loginAccount({ email, password: requestedForm.password })
           : await registerAccount({
               name,
               email,
-              password: authForm.password,
-              role: userMode === "coach" ? "coach" : "athlete",
+              password: requestedForm.password,
+              role: requestedRole,
             });
-        finishAuthentication(toStoredAccount(authenticated));
+        finishAuthentication(toStoredAccount(authenticated), requestedMode);
+        return true;
       } catch (error) {
         setAuthError(error instanceof Error ? error.message : "Не вдалося виконати вхід. Повторіть спробу.");
+        return false;
       } finally {
         setAuthForm((current) => ({ ...current, password: "" }));
         setAuthLoading(false);
       }
-      return;
     }
 
     const existing = accounts.find((item) => item.email === email);
@@ -407,12 +425,29 @@ export default function App() {
         id: createId("acct"),
         name,
         email,
-        role: userMode,
+        role: requestedRole,
         createdAt: new Date().toISOString(),
         syncToken: createId("sync"),
       } satisfies UserAccount);
 
-    finishAuthentication(nextAccount);
+    finishAuthentication(nextAccount, existing ? "login" : "register");
+    return true;
+  };
+
+  const completeWelcomeFlow = async (data: WelcomeFlowData) => {
+    const role = data.role ?? "athlete";
+    const nextMode = data.authMode;
+    setUserMode(role);
+    setAuthMode(nextMode);
+    setAuthForm({ name: data.displayName, email: data.email, password: data.password });
+    const authenticated = await handleAuth({
+      name: data.displayName,
+      email: data.email,
+      password: data.password,
+      mode: nextMode,
+      role,
+    });
+    if (!authenticated) throw new Error("Authentication failed");
   };
 
   const clearAuthenticatedState = () => {
@@ -1066,6 +1101,35 @@ export default function App() {
     return () => window.clearTimeout(timeout);
   }, [dataLoaded, account?.id, allSavedAthletes, allSavedPrograms, allTrainingLogs, allTeams, allMemberships, allTestHistory]);
 
+  if (!dataLoaded || sessionRestoring) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-[#080a0d] px-6 text-[#f3efe5]" aria-busy="true">
+        <div className="grid justify-items-center gap-3 text-center">
+          <LoaderCircle className="h-7 w-7 animate-spin text-[#b99a5b]" aria-hidden="true" />
+          <p className="text-sm font-semibold">Відновлюємо ваш робочий простір</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!account) {
+    return (
+      <WelcomeFlow
+        heroImageSrc="/assets/onboarding/combat-athlete-welcome.webp"
+        heroImageAlt="Боєць із перебинтованими руками у тренувальному просторі Black Bear Performance"
+        defaultValue={{
+          authMode,
+          displayName: authForm.name,
+          email: authForm.email,
+          role: userMode === "coach" ? "coach" : "athlete",
+        }}
+        onSignIn={() => setAuthMode("login")}
+        onComplete={completeWelcomeFlow}
+        isSubmitting={authLoading}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen px-3 py-4 text-[var(--bbp-text)] sm:px-5 md:px-8">
       <div className="mx-auto grid max-w-7xl gap-5">
@@ -1148,26 +1212,34 @@ export default function App() {
           )}
 
           {step === 1 && (
-            <ScreenShell eyebrow="Крок 1" title="Система підготовки" description="Увійдіть, виберіть роль і перейдіть до профілю спортсмена. Постійні дані зберігатимуться для наступних блоків.">
+            <ScreenShell
+              eyebrow={roleLabel(account.serverRole || account.role)}
+              title={`Кабінет: ${account.name}`}
+              description={userMode === "coach" ? "Команди, програми спортсменів і контроль прогресу в одному робочому просторі." : "Ваш профіль, готовність, тренувальний журнал і поточна програма."}
+            >
               <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
                 <Card className="premium-reveal grid gap-5 border-[var(--bbp-border-strong)] bg-[linear-gradient(145deg,rgba(13,20,27,0.98),rgba(7,11,16,0.98))]">
                   <div className="grid gap-3 border-b border-[var(--bbp-border)] pb-4 md:grid-cols-[1fr_auto] md:items-end">
                     <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c7f4ff]">Система підготовки спортсменів</p>
-                      <h2 className="font-display mt-2 max-w-3xl text-3xl font-black text-white md:text-5xl">Створюйте блоки. Проводьте тренування. Стежте за прогресом.</h2>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#d1b36e]">Сьогодні у фокусі</p>
+                      <h2 className="font-display mt-2 max-w-3xl text-3xl font-black text-white md:text-5xl">
+                        {userMode === "coach" ? "Керуйте підготовкою команди без зайвого шуму." : "Виконайте план і зафіксуйте результат."}
+                      </h2>
                       <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--bbp-muted)]">
-                        Українські й англійські матеріали, команди тренерів, журнали спортсменів, контрольні тести та експорт у форматі OTA.
+                        {savedPrograms.length
+                          ? "Остання програма, журнал і контрольні показники доступні праворуч. Новий блок можна почати з бойового профілю."
+                          : "Почніть із бойового профілю, внесіть базові дані й отримайте першу структуровану програму підготовки."}
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        <StatusPill tone="gold" label="Логіка бойової підготовки" />
-                        <StatusPill tone="green" label="Простір тренера й спортсмена" />
-                        <StatusPill tone="red" label="Контроль ризиків" />
+                        <StatusPill tone="gold" label={`${savedPrograms.length} програм`} />
+                        <StatusPill tone="green" label={`${trainingLogs.length} записів журналу`} />
+                        <StatusPill tone="red" label={`${savedAthletes.length} профілів`} />
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <StatBox label="Тижні" value="4-12" />
-                      <StatBox label="Ролі" value="3" />
-                      <StatBox label="Експорт" value="XLS" />
+                      <StatBox label="Програми" value={String(savedPrograms.length)} />
+                      <StatBox label="Журнал" value={String(trainingLogs.length)} />
+                      <StatBox label="Спортсмени" value={String(savedAthletes.length)} />
                     </div>
                   </div>
                   <SegmentedControl
@@ -1180,27 +1252,11 @@ export default function App() {
                       { label: "Обидві", value: "ua_en" },
                     ]}
                   />
-                  <SegmentedControl
-                    label="Роль користувача"
-                    value={userMode}
-                    disabled={Boolean(account)}
-                    onChange={(value) => setUserMode(value as UserMode)}
-                    options={[
-                      { label: "Спортсмен", value: "athlete" },
-                      { label: "Тренер", value: "coach" },
-                      ...(!remoteSyncEnabled ? [{ label: "Адміністратор", value: "admin" }] : []),
-                    ]}
-                  />
-                  <p className="rounded-md border border-zinc-800 bg-black/45 p-3 text-xs leading-5 text-zinc-400">
-                    {remoteSyncEnabled
-                      ? "Спортсмен веде власний журнал тренувань. Тренер працює з командами й журналами. Службові ролі призначає сервер."
-                      : "Спортсмен веде власний журнал тренувань. Тренер працює з командами й журналами. Адміністратор переглядає облікові записи, програми та стан системи."}
-                  </p>
                   <AccountPanel
                     account={account}
                     authForm={authForm}
                     setAuthForm={setAuthForm}
-                    onSubmit={handleAuth}
+                    onSubmit={() => { void handleAuth(); }}
                     onLogout={logout}
                     syncStatus={syncStatus}
                     onSyncNow={syncNow}
@@ -1246,7 +1302,7 @@ export default function App() {
                     />
                   )}
                   <Button onClick={nextStep} className="mt-2 w-full md:w-fit">
-                    До профілю бійця <ChevronRight className="h-4 w-4" />
+                    {savedPrograms.length ? "Створити новий блок" : "Створити першу програму"} <ChevronRight className="h-4 w-4" />
                   </Button>
                 </Card>
                 <StartWorkbenchCard

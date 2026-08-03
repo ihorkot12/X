@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("a local account can enter the deterministic program workflow", async ({ page }) => {
+test("an athlete can complete the local onboarding workflow", async ({ page }) => {
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
   const failedCoreRequests: string[] = [];
@@ -18,18 +18,30 @@ test("a local account can enter the deterministic program workflow", async ({ pa
   await page.addInitScript(() => localStorage.clear());
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
-  await expect(page.getByRole("heading", { name: "Black Bear" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Створюйте блоки. Проводьте тренування. Стежте за прогресом." })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Сильні рішення починаються з ясної картини." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Почати налаштування" }).click();
+  await page.getByText("Покращити результат", { exact: true }).click();
+  await page.locator('label:has(input[name="sessionsPerWeek"][value="3"])').click();
+  await page.getByRole("button", { name: "Продовжити" }).click();
 
-  await page.getByLabel("Ім'я").first().fill("Локальний тестовий спортсмен");
+  await page.getByLabel("Ваше ім’я").fill("Локальний тестовий спортсмен");
   await page.getByLabel("Електронна пошта").fill("local-athlete@example.test");
-  await page.getByRole("button", { name: "Зареєструватися" }).click();
+  await page.getByLabel("Пароль", { exact: true }).fill("testing-pass-2026");
+  await page.getByText("Погоджуюся з умовами", { exact: false }).click();
+  await page.getByRole("button", { name: "Продовжити" }).click();
 
-  await expect(page.getByText("Вхід виконано", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: /До профілю бійця/ }).click();
+  await page.getByText("Athlete", { exact: true }).click();
+  await page.getByRole("button", { name: "Продовжити" }).click();
+  await page.getByRole("button", { name: "Підтвердити й завершити" }).click();
+
+  await expect(page.getByRole("heading", { name: "Бойовий профіль" })).toBeVisible();
   await expect(page.getByText("Тижневе бойове навантаження", { exact: true })).toBeVisible();
 
-  const viewportFits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
+  const viewportFits = await page.evaluate(
+    () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+  );
   expect(viewportFits).toBe(true);
   expect(consoleErrors).toEqual([]);
   expect(pageErrors).toEqual([]);

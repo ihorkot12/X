@@ -111,7 +111,7 @@ export const Input = ({
 export const SegmentedControl = ({ options, value, onChange, label, id, disabled = false }: SegmentedControlProps) => (
   <div id={id} className="grid gap-2">
     {label && <span className="text-[11px] font-bold uppercase text-[var(--bbp-muted-strong)]">{label}</span>}
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(76px,1fr))] gap-1 rounded-md border border-[var(--bbp-border)] bg-[var(--bbp-panel-soft)] p-1">
+    <div className="flex snap-x gap-1 overflow-x-auto rounded-md border border-[var(--bbp-border)] bg-[var(--bbp-panel-soft)] p-1 [scrollbar-width:thin] sm:grid sm:grid-cols-[repeat(auto-fit,minmax(76px,1fr))] sm:overflow-visible">
       {options.map((option) => (
         <button
           key={option.value}
@@ -119,7 +119,7 @@ export const SegmentedControl = ({ options, value, onChange, label, id, disabled
           disabled={disabled}
           aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
-          className={`min-h-9 rounded-md border px-2.5 py-1.5 text-xs font-bold leading-tight transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${
+          className={`min-h-9 min-w-[88px] flex-none snap-start whitespace-nowrap rounded-md border px-2.5 py-1.5 text-xs font-bold leading-tight transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 sm:min-w-0 ${
             value === option.value
               ? "border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] text-[var(--bbp-accent-strong)]"
               : "border-transparent text-[var(--bbp-muted)] hover:border-[var(--bbp-border)] hover:bg-[var(--bbp-panel-strong)] hover:text-[var(--bbp-text)]"
