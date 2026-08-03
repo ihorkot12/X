@@ -3,8 +3,11 @@ build/
 dist/
 coverage/
 test-artifacts/
+playwright-report/
+design-screenshots/
 .DS_Store
 *.log
 .env*
 !.env.example
 .vercel
+PRIVATE_RESOURCE_CONTEXT_LOCAL.md

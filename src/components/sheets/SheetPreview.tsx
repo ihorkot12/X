@@ -1,7 +1,23 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { FileSpreadsheet, Lock, Table } from "lucide-react";
+import { FileSpreadsheet, Table } from "lucide-react";
 import { Assessment, AthleteProfile, CombatLoad, CombatProfile, GeneratedProgram, LanguageMode, ProgramDay, ProgramSettings, SheetTab } from "../../types";
+import {
+  goalLabel,
+  levelLabel,
+  localizedList,
+  phaseLabel,
+  prescriptionValueUa,
+  priorityLabel,
+  priorityReasonUa,
+  profileLabel,
+  programSummaryUa,
+  programTextUa,
+  sexLabel,
+  sportLabel,
+  trainingAgeLabel,
+  ukrainianNote,
+} from "../uaCopy";
 import { Button } from "../ui/Base";
 
 type PrioritySheetScore = {
@@ -30,24 +46,24 @@ export const SheetPreview = ({
   assessment: Assessment;
   priorityScores: PrioritySheetScore[];
 }) => {
-  const [activeTab, setActiveTab] = useState("Week 1");
+  const [activeTab, setActiveTab] = useState("Тиждень 1");
   const tabs = useMemo<SheetTab[]>(() => {
-    const weekTabs: SheetTab[] = program.weeks.map((week) => ({ name: `Week ${week.week}`, type: "week" }));
+    const weekTabs: SheetTab[] = program.weeks.map((week) => ({ name: `Тиждень ${week.week}`, type: "week" }));
     return [
-      { name: "Athlete Profile", type: "profile" },
-      { name: "Assessment", type: "assessment" },
-      { name: "Goals", type: "goals" },
+      { name: "Профіль спортсмена", type: "profile" },
+      { name: "Оцінювання", type: "assessment" },
+      { name: "Цілі", type: "goals" },
       ...weekTabs,
-      { name: "Exercise Notes", type: "notes" },
-      { name: "Conditioning Zones", type: "zones" },
-      { name: "Testing Checkpoints", type: "checkpoints" },
-      { name: "Readiness", type: "readiness" },
+      { name: "Примітки до вправ", type: "notes" },
+      { name: "Зони витривалості", type: "zones" },
+      { name: "Контрольні тести", type: "checkpoints" },
+      { name: "Готовність", type: "readiness" },
     ];
   }, [program.weeks]);
 
-  const activeWeek = program.weeks.find((week) => `Week ${week.week}` === activeTab) || program.weeks[0];
-  const rows = activeTab.startsWith("Week") ? activeWeek.days : [];
-  const canDownloadCsv = activeTab.startsWith("Week");
+  const activeWeek = program.weeks.find((week) => `Тиждень ${week.week}` === activeTab) || program.weeks[0];
+  const rows = activeTab.startsWith("Тиждень") ? activeWeek.days : [];
+  const canDownloadCsv = activeTab.startsWith("Тиждень");
 
   const downloadActiveTabCsv = () => {
     if (!canDownloadCsv) return;
@@ -109,13 +125,10 @@ export const SheetPreview = ({
             <Table className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-sm font-bold text-white">BBP_Program_Export</p>
-            <p className="text-xs text-[var(--bbp-muted)]">Google Sheets structure preview</p>
+            <p className="text-sm font-bold text-white">Експорт програми Black Bear</p>
+            <p className="text-xs text-[var(--bbp-muted)]">Попередній перегляд структури Google Sheets</p>
           </div>
         </div>
-        <Button disabled className="w-full lg:w-auto">
-          <Lock className="h-4 w-4" /> Export integration later
-        </Button>
       </div>
 
       <div className="flex gap-1 overflow-x-auto border-b border-[var(--bbp-border)] bg-[rgba(6,9,13,0.78)] p-2">
@@ -136,7 +149,7 @@ export const SheetPreview = ({
       </div>
 
       <div className="max-h-[620px] overflow-auto bg-white text-black">
-        {activeTab.startsWith("Week") ? (
+        {activeTab.startsWith("Тиждень") ? (
           <WeekSheet rows={rows} languageMode={languageMode} />
         ) : (
           <InfoSheet
@@ -155,20 +168,20 @@ export const SheetPreview = ({
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--bbp-border)] bg-[rgba(10,16,22,0.94)] p-3">
         <p className="text-xs leading-5 text-[var(--bbp-muted)]">
-          Final MVP output should generate this as a styled Google Sheet with profile, tests, weekly plan, notes, zones, checkpoints, and readiness.
+          Підсумковий документ міститиме профіль, тести, тижневий план, примітки, зони, контрольні тести та готовність у форматі Google Sheets.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="secondary" disabled={!canDownloadCsv} onClick={downloadActiveTabCsv}>
-            Download active week CSV
+            Завантажити CSV за тиждень
           </Button>
           <Button variant="secondary" onClick={downloadFullProgramCsv}>
-            Download workbook CSV
+            Завантажити CSV програми
           </Button>
           <Button variant="secondary" onClick={downloadExcelWorkbook}>
-            Download Excel workbook
+            Завантажити книгу Excel
           </Button>
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted)]">
-            <FileSpreadsheet className="h-4 w-4" /> OTA-style structure, Black Bear logic
+            <FileSpreadsheet className="h-4 w-4" /> Структура OTA, логіка Black Bear
           </div>
         </div>
       </div>
@@ -201,23 +214,23 @@ function WeekSheet({ rows, languageMode }: { rows: ProgramDay[]; languageMode: L
       <thead className="sticky top-0 bg-zinc-100 text-[10px] uppercase text-zinc-600">
         <tr>
           {[
-            "Day",
-            "Session Goal",
-            "Block",
-            "Warm-Up",
-            "Power / Speed",
-            "Strength",
-            "Accessory",
-            "Conditioning",
-            "Mobility / Prehab",
-            "Sets",
-            "Reps",
-            "Tempo",
-            "Rest",
-            "Intensity",
-            "HR Zone / MAS",
-            "Coach Notes",
-            "Athlete Notes",
+            "День",
+            "Мета тренування",
+            "Блок",
+            "Розминка",
+            "Потужність і швидкість",
+            "Сила",
+            "Допоміжні вправи",
+            "Витривалість",
+            "Рухливість і профілактика",
+            "Підходи",
+            "Повторення",
+            "Темп",
+            "Відпочинок",
+            "Інтенсивність",
+            "Зона HR / MAS",
+            "Примітки тренера",
+            "Примітки спортсмена",
           ].map((header) => (
             <th key={header} className="border border-zinc-300 px-2 py-2 text-left">
               {header}
@@ -230,9 +243,9 @@ function WeekSheet({ rows, languageMode }: { rows: ProgramDay[]; languageMode: L
           const lead = day.strength[0] || day.powerSpeed[0] || day.accessory[0];
           return (
             <tr key={day.day} className="align-top">
-              <Cell strong>{day.day}</Cell>
-              <Cell>{day.sessionGoal}</Cell>
-              <Cell>{day.block}</Cell>
+              <Cell strong>{programTextUa(day.day)}</Cell>
+              <Cell>{programTextUa(day.sessionGoal)}</Cell>
+              <Cell>{programTextUa(day.block)}</Cell>
               <Cell>{joinNames(day.warmup)}</Cell>
               <Cell>{joinNames(day.powerSpeed)}</Cell>
               <Cell>{joinNames(day.strength)}</Cell>
@@ -240,18 +253,18 @@ function WeekSheet({ rows, languageMode }: { rows: ProgramDay[]; languageMode: L
               <Cell>{joinNames(day.conditioning)}</Cell>
               <Cell>{joinNames(day.mobilityPrehab)}</Cell>
               <Cell>{lead?.sets || "-"}</Cell>
-              <Cell>{lead?.reps || "-"}</Cell>
+              <Cell>{prescriptionValueUa(lead?.reps || "-")}</Cell>
               <Cell>{lead?.tempo || "-"}</Cell>
-              <Cell>{lead?.rest || "-"}</Cell>
-              <Cell>{lead?.intensity || "-"}</Cell>
-              <Cell>{day.conditioning[0]?.intensity || "Zone by method"}</Cell>
+              <Cell>{prescriptionValueUa(lead?.rest || "-")}</Cell>
+              <Cell>{prescriptionValueUa(lead?.intensity || "-")}</Cell>
+              <Cell>{day.conditioning[0]?.intensity ? prescriptionValueUa(day.conditioning[0].intensity) : "Зона за методикою"}</Cell>
               <Cell>
-                {languageMode !== "en" && day.coachNotesUa}
+                {languageMode !== "en" && ukrainianNote(day.coachNotesUa)}
                 {languageMode === "ua_en" && day.coachNotesUa && day.coachNotesEn ? " / " : ""}
                 {languageMode !== "ua" && day.coachNotesEn}
               </Cell>
               <Cell>
-                {languageMode !== "en" && day.athleteNotesUa}
+                {languageMode !== "en" && ukrainianNote(day.athleteNotesUa)}
                 {languageMode === "ua_en" && day.athleteNotesUa && day.athleteNotesEn ? " / " : ""}
                 {languageMode !== "ua" && day.athleteNotesEn}
               </Cell>
@@ -300,9 +313,9 @@ function InfoSheet({
     <table className="w-full min-w-[860px] border-collapse text-sm">
       <thead className="sticky top-0 bg-zinc-100 text-[10px] uppercase text-zinc-600">
         <tr>
-          <th className="w-[220px] border border-zinc-300 px-2 py-2 text-left">Field</th>
-          <th className="border border-zinc-300 px-2 py-2 text-left">Value</th>
-          <th className="w-[360px] border border-zinc-300 px-2 py-2 text-left">Coach / Athlete Note</th>
+          <th className="w-[220px] border border-zinc-300 px-2 py-2 text-left">Поле</th>
+          <th className="border border-zinc-300 px-2 py-2 text-left">Значення</th>
+          <th className="w-[360px] border border-zinc-300 px-2 py-2 text-left">Примітка тренера або спортсмена</th>
         </tr>
       </thead>
       <tbody>
@@ -339,91 +352,91 @@ function getInfoRows({
   assessment: Assessment;
   priorityScores: PrioritySheetScore[];
 }): string[][] {
-  if (activeTab === "Athlete Profile") {
+  if (activeTab === "Профіль спортсмена") {
     return [
-      ["Name", athleteProfile.name || "-", "Stable profile data"],
-      ["Sport", athleteProfile.sport, profileLabel(combatProfile)],
-      ["Combat profile", profileLabel(combatProfile), "Program template is filtered from this"],
-      ["Age / Sex", `${athleteProfile.age || "-"} / ${athleteProfile.sex}`, "Use for coaching context"],
-      ["Height / Weight", `${athleteProfile.heightCm || "-"} cm / ${athleteProfile.weightKg || "-"} kg`, "Used for strength ratio"],
-      ["Level", athleteProfile.level, "Affects coaching interpretation"],
-      ["Strength training age", athleteProfile.strengthTrainingAge, "Use conservative loading if low"],
-      ["Equipment", list(athleteProfile.equipment), "Exercise selection should respect this"],
-      ["Pain / risk flags", list(athleteProfile.painAreas), "Not a diagnosis; use for safer substitutions"],
+      ["Ім'я", athleteProfile.name || "-", "Постійні дані профілю"],
+      ["Вид спорту", sportLabel(athleteProfile.sport), profileLabel(combatProfile)],
+      ["Бойовий профіль", profileLabel(combatProfile), "Визначає шаблон програми"],
+      ["Вік / стать", `${athleteProfile.age || "-"} / ${sexLabel(athleteProfile.sex)}`, "Для тренувального контексту"],
+      ["Зріст / вага", `${athleteProfile.heightCm || "-"} см / ${athleteProfile.weightKg || "-"} кг`, "Для оцінки співвідношення сили до ваги"],
+      ["Рівень", levelLabel(athleteProfile.level), "Впливає на інтерпретацію тренера"],
+      ["Стаж силових тренувань", trainingAgeLabel(athleteProfile.strengthTrainingAge), "За малого стажу навантаження має бути помірним"],
+      ["Обладнання", localizedList(athleteProfile.equipment), "Визначає вибір вправ"],
+      ["Біль та обмеження", localizedList(athleteProfile.painAreas), "Не є діагнозом; потрібні безпечні заміни"],
     ];
   }
 
-  if (activeTab === "Assessment") {
+  if (activeTab === "Оцінювання") {
     return [
-      ["Squat / Trap Bar", value(assessment.squatOrTrapBar, "kg"), "Strength base marker"],
-      ["Bench / Push-Ups", value(assessment.benchOrPushups, "kg/reps"), "Upper strength marker"],
-      ["Pull-Ups", value(assessment.pullups, "reps"), "Pulling/grip marker"],
-      ["Vertical Jump", value(assessment.verticalJump, "cm"), "Power marker"],
-      ["Broad Jump", value(assessment.broadJump, "cm"), "Horizontal power marker"],
-      ["Med Ball Throw", value(assessment.medBallThrow, "m"), "Rotational/upper power marker"],
-      ["10m Sprint", value(assessment.sprint10m, "s"), "Acceleration marker"],
-      ["MAS", value(assessment.mas, "m/s"), "Used for running zones if available"],
-      ["Resting HR / HR Max", `${assessment.restingHr || "-"} / ${assessment.hrMax || "-"}`, "Used for HR zones if available"],
+      ["Squat / Trap Bar", value(assessment.squatOrTrapBar, "кг"), "Показник базової сили"],
+      ["Bench Press / Push-ups", value(assessment.benchOrPushups, "кг/повт."), "Показник сили верхньої частини тіла"],
+      ["Pull-ups", value(assessment.pullups, "повт."), "Показник тягової сили й хвату"],
+      ["Vertical Jump", value(assessment.verticalJump, "см"), "Показник потужності"],
+      ["Broad Jump", value(assessment.broadJump, "см"), "Показник горизонтальної потужності"],
+      ["Med Ball Throw", value(assessment.medBallThrow, "м"), "Показник ротаційної потужності"],
+      ["10m Sprint", value(assessment.sprint10m, "с"), "Показник прискорення"],
+      ["MAS", value(assessment.mas, "м/с"), "Для розрахунку бігових зон"],
+      ["HR у спокої / макс. HR", `${assessment.restingHr || "-"} / ${assessment.hrMax || "-"}`, "Для розрахунку зон HR"],
       ...priorityScores.map((score) => [
-        score.label,
+        priorityLabel(score.label),
         `${score.score}/5`,
         localizedReason(score, languageMode),
       ]),
     ];
   }
 
-  if (activeTab === "Goals") {
+  if (activeTab === "Цілі") {
     return [
-      ["Program summary", program.summary, "Generated from profile and settings"],
-      ["Length", `${programSettings.lengthWeeks} weeks`, "Options: 4 / 8 / 12"],
-      ["S&C days", `${programSettings.scDaysPerWeek} days/week`, "Place around combat practice"],
-      ["Session duration", programSettings.sessionDuration, "Keep sessions realistic"],
-      ["Phase", programSettings.phase, "Off-season, pre-camp, fight camp, in-season, or return"],
-      ["Main goal", programSettings.mainGoal, "Primary adaptation target"],
-      ["Competition date", programSettings.competitionDate || "-", "Use to guide taper and checkpoint timing"],
-      ["Combat weekly load", `${combatLoad.strikingSessions} striking / ${combatLoad.grapplingSessions} grappling / ${combatLoad.technicalSessions} technical`, "Avoid stacking hard days"],
-      ["Hard days", `${combatLoad.hardSparringDays} hard sparring / ${combatLoad.hardGrapplingDays} hard wrestling`, "Controls conflict notes"],
+      ["Опис програми", programSummaryUa(combatProfile, athleteProfile, programSettings), "Сформовано з профілю й параметрів"],
+      ["Тривалість", `${programSettings.lengthWeeks} тижнів`, "Варіанти: 4 / 8 / 12"],
+      ["Силові тренування", `${programSettings.scDaysPerWeek} на тиждень`, "Розмістити з урахуванням бойових тренувань"],
+      ["Тривалість тренування", prescriptionValueUa(programSettings.sessionDuration), "Реалістична тривалість"],
+      ["Фаза", phaseLabel(programSettings.phase), "Від міжсезоння до повернення після перерви"],
+      ["Головна мета", goalLabel(programSettings.mainGoal), "Основна ціль адаптації"],
+      ["Дата змагання", programSettings.competitionDate || "-", "Визначає зниження навантаження й контрольні тести"],
+      ["Бойове навантаження", `ударні тренування: ${combatLoad.strikingSessions} / борцівські тренування: ${combatLoad.grapplingSessions} / технічні тренування: ${combatLoad.technicalSessions}`, "Для контексту тренувань"],
+      ["Важкі дні", `важкі спаринги: ${combatLoad.hardSparringDays} / важка боротьба: ${combatLoad.hardGrapplingDays}`, "Впливає на оцінку тренера"],
     ];
   }
 
-  if (activeTab === "Exercise Notes") {
+  if (activeTab === "Примітки до вправ") {
     const unique = new Map<string, string>();
     program.weeks.forEach((week) =>
       week.days.forEach((day) =>
         [...day.warmup, ...day.powerSpeed, ...day.strength, ...day.accessory, ...day.conditioning, ...day.mobilityPrehab].forEach((exercise) => {
           if (!unique.has(exercise.name)) {
             unique.set(exercise.name, [
-              languageMode !== "en" ? exercise.notesUa : "",
+              languageMode !== "en" ? ukrainianNote(exercise.notesUa) : "",
               languageMode !== "ua" ? exercise.notesEn : "",
             ].filter(Boolean).join(" / "));
           }
         }),
       ),
     );
-    return Array.from(unique.entries()).map(([name, note]) => [name, note || "-", "Keep quality before load"]);
+    return Array.from(unique.entries()).map(([name, note]) => [name, note || "-", "Якість руху важливіша за вагу"]);
   }
 
-  if (activeTab === "Conditioning Zones") {
+  if (activeTab === "Зони витривалості") {
     return getZoneRows(assessment);
   }
 
-  if (activeTab === "Testing Checkpoints") {
+  if (activeTab === "Контрольні тести") {
     return program.weeks
       .filter((week) => week.isCheckpoint || week.week === program.weeks.length)
-      .map((week) => [`Week ${week.week}`, week.blockName, week.focus]);
+      .map((week) => [`Тиждень ${week.week}`, programTextUa(week.blockName), programTextUa(week.focus)]);
   }
 
-  if (activeTab === "Readiness") {
+  if (activeTab === "Готовність") {
     return [
-      ["Sleep", `${assessment.sleep}/5`, assessment.sleep <= 2 ? "Reduce volume today" : "Normal readiness input"],
-      ["Stress", `${assessment.stress}/5`, assessment.stress >= 4 ? "Avoid forcing intensity" : "Normal readiness input"],
-      ["Soreness", `${assessment.soreness}/5`, assessment.soreness >= 4 ? "Reduce volume or use recovery option" : "Normal readiness input"],
-      ["Motivation", `${assessment.motivation}/5`, assessment.motivation <= 2 ? "Use simpler session target" : "Normal readiness input"],
-      ["Rule", "Bad sleep, high stress, or high soreness lowers volume", "Program engine uses this for session volume"],
+      ["Сон", `${assessment.sleep}/5`, assessment.sleep <= 2 ? "Сьогодні зменшити обсяг" : "Готовність у межах норми"],
+      ["Стрес", `${assessment.stress}/5`, assessment.stress >= 4 ? "Не форсувати інтенсивність" : "Готовність у межах норми"],
+      ["М'язовий біль", `${assessment.soreness}/5`, assessment.soreness >= 4 ? "Зменшити обсяг або додати відновлення" : "Готовність у межах норми"],
+      ["Мотивація", `${assessment.motivation}/5`, assessment.motivation <= 2 ? "Спростити мету тренування" : "Готовність у межах норми"],
+      ["Правило", "Поганий сон, високий стрес або сильний м'язовий біль зменшують обсяг", "Система враховує це в обсязі тренування"],
     ];
   }
 
-  return [["Status", activeTab, "No data"]];
+  return [["Статус", activeTab, "Немає даних"]];
 }
 
 function Cell({ children, strong = false }: { children: ReactNode; strong?: boolean }) {
@@ -436,42 +449,42 @@ function joinNames(items: { name: string }[]) {
 
 function buildWeekCsv(rows: ProgramDay[], languageMode: LanguageMode) {
   const header = [
-    "Day",
-    "Session Goal",
-    "Block",
-    "Warm-Up",
-    "Power / Speed",
-    "Strength",
-    "Accessory",
-    "Conditioning",
-    "Mobility / Prehab",
-    "Sets",
-    "Reps",
-    "Tempo",
-    "Rest",
-    "Intensity",
-    "HR Zone / MAS",
-    "Coach Notes",
-    "Athlete Notes",
+    "День",
+    "Мета тренування",
+    "Блок",
+    "Розминка",
+    "Потужність і швидкість",
+    "Сила",
+    "Допоміжні вправи",
+    "Витривалість",
+    "Рухливість і профілактика",
+    "Підходи",
+    "Повторення",
+    "Темп",
+    "Відпочинок",
+    "Інтенсивність",
+    "Зона HR / MAS",
+    "Примітки тренера",
+    "Примітки спортсмена",
   ];
   const body = rows.map((day) => {
     const lead = day.strength[0] || day.powerSpeed[0] || day.accessory[0];
     const coachNotes = [
-      languageMode !== "en" ? day.coachNotesUa : "",
+      languageMode !== "en" ? ukrainianNote(day.coachNotesUa) : "",
       languageMode !== "ua" ? day.coachNotesEn : "",
     ]
       .filter(Boolean)
       .join(" / ");
     const athleteNotes = [
-      languageMode !== "en" ? day.athleteNotesUa : "",
+      languageMode !== "en" ? ukrainianNote(day.athleteNotesUa) : "",
       languageMode !== "ua" ? day.athleteNotesEn : "",
     ]
       .filter(Boolean)
       .join(" / ");
     return [
-      day.day,
-      day.sessionGoal,
-      day.block,
+      programTextUa(day.day),
+      programTextUa(day.sessionGoal),
+      programTextUa(day.block),
       joinNames(day.warmup),
       joinNames(day.powerSpeed),
       joinNames(day.strength),
@@ -479,11 +492,11 @@ function buildWeekCsv(rows: ProgramDay[], languageMode: LanguageMode) {
       joinNames(day.conditioning),
       joinNames(day.mobilityPrehab),
       lead?.sets || "-",
-      lead?.reps || "-",
+      prescriptionValueUa(lead?.reps || "-"),
       lead?.tempo || "-",
-      lead?.rest || "-",
-      lead?.intensity || "-",
-      day.conditioning[0]?.intensity || "Zone by method",
+      prescriptionValueUa(lead?.rest || "-"),
+      prescriptionValueUa(lead?.intensity || "-"),
+      day.conditioning[0]?.intensity ? prescriptionValueUa(day.conditioning[0].intensity) : "Зона за методикою",
       coachNotes,
       athleteNotes,
     ];
@@ -511,49 +524,49 @@ function buildWorkbookCsv({
   priorityScores: PrioritySheetScore[];
 }) {
   const header = [
-    "Week",
-    "Block",
-    "Week Focus",
-    "Day",
-    "Session Goal",
-    "Day Block",
-    "Warm-Up",
-    "Power / Speed",
-    "Strength",
-    "Accessory",
-    "Conditioning",
-    "Mobility / Prehab",
-    "Sets",
-    "Reps",
-    "Tempo",
-    "Rest",
-    "Intensity",
-    "HR Zone / MAS",
-    "Coach Notes",
-    "Athlete Notes",
+    "Тиждень",
+    "Блок",
+    "Фокус тижня",
+    "День",
+    "Мета тренування",
+    "Блок дня",
+    "Розминка",
+    "Потужність і швидкість",
+    "Сила",
+    "Допоміжні вправи",
+    "Витривалість",
+    "Рухливість і профілактика",
+    "Підходи",
+    "Повторення",
+    "Темп",
+    "Відпочинок",
+    "Інтенсивність",
+    "Зона HR / MAS",
+    "Примітки тренера",
+    "Примітки спортсмена",
   ];
   const weekRows = program.weeks.flatMap((week) =>
     week.days.map((day) => {
       const lead = day.strength[0] || day.powerSpeed[0] || day.accessory[0];
       const coachNotes = [
-        languageMode !== "en" ? day.coachNotesUa : "",
+        languageMode !== "en" ? ukrainianNote(day.coachNotesUa) : "",
         languageMode !== "ua" ? day.coachNotesEn : "",
       ]
         .filter(Boolean)
         .join(" / ");
       const athleteNotes = [
-        languageMode !== "en" ? day.athleteNotesUa : "",
+        languageMode !== "en" ? ukrainianNote(day.athleteNotesUa) : "",
         languageMode !== "ua" ? day.athleteNotesEn : "",
       ]
         .filter(Boolean)
         .join(" / ");
       return [
         String(week.week),
-        week.blockName,
-        week.focus,
-        day.day,
-        day.sessionGoal,
-        day.block,
+        programTextUa(week.blockName),
+        programTextUa(week.focus),
+        programTextUa(day.day),
+        programTextUa(day.sessionGoal),
+        programTextUa(day.block),
         joinNames(day.warmup),
         joinNames(day.powerSpeed),
         joinNames(day.strength),
@@ -561,20 +574,20 @@ function buildWorkbookCsv({
         joinNames(day.conditioning),
         joinNames(day.mobilityPrehab),
         lead?.sets || "-",
-        lead?.reps || "-",
+        prescriptionValueUa(lead?.reps || "-"),
         lead?.tempo || "-",
-        lead?.rest || "-",
-        lead?.intensity || "-",
-        day.conditioning[0]?.intensity || "Zone by method",
+        prescriptionValueUa(lead?.rest || "-"),
+        prescriptionValueUa(lead?.intensity || "-"),
+        day.conditioning[0]?.intensity ? prescriptionValueUa(day.conditioning[0].intensity) : "Зона за методикою",
         coachNotes,
         athleteNotes,
       ];
     }),
   );
-  const sections = ["Athlete Profile", "Assessment", "Goals", "Exercise Notes", "Conditioning Zones", "Testing Checkpoints", "Readiness"]
+  const sections = ["Профіль спортсмена", "Оцінювання", "Цілі", "Примітки до вправ", "Зони витривалості", "Контрольні тести", "Готовність"]
     .flatMap((tab) => [
       [tab, "", ""],
-      ["Field", "Value", "Coach / Athlete Note"],
+      ["Поле", "Значення", "Примітка тренера або спортсмена"],
       ...getInfoRows({
         activeTab: tab,
         program,
@@ -589,9 +602,9 @@ function buildWorkbookCsv({
       ["", "", ""],
     ]);
   return [
-    ["BBP Workbook Export", "", ""],
+    ["Експорт книги Black Bear", "", ""],
     ...sections,
-    ["Weekly Program", "", ""],
+    ["Тижнева програма", "", ""],
     header,
     ...weekRows,
   ].map((row) => row.map(csvCell).join(",")).join("\n");
@@ -627,17 +640,17 @@ function buildExcelXmlWorkbook({
     priorityScores,
   };
   const sheets: Array<{ name: string; rows: string[][] }> = [
-    ...["Athlete Profile", "Assessment", "Goals"].map((tab) => ({
+    ...["Профіль спортсмена", "Оцінювання", "Цілі"].map((tab) => ({
       name: tab,
-      rows: [["Field", "Value", "Coach / Athlete Note"], ...getInfoRows({ activeTab: tab, ...infoContext })],
+      rows: [["Поле", "Значення", "Примітка тренера або спортсмена"], ...getInfoRows({ activeTab: tab, ...infoContext })],
     })),
     ...program.weeks.map((week) => ({
-      name: `Week ${week.week}`,
-      rows: buildWeekRows(week.days, languageMode, ["Day", "Session Goal", "Block", "Warm-Up", "Power / Speed", "Strength", "Accessory", "Conditioning", "Mobility / Prehab", "Sets", "Reps", "Tempo", "Rest", "Intensity", "HR Zone / MAS", "Coach Notes", "Athlete Notes"]),
+      name: `Тиждень ${week.week}`,
+      rows: buildWeekRows(week.days, languageMode, ["День", "Мета тренування", "Блок", "Розминка", "Потужність і швидкість", "Сила", "Допоміжні вправи", "Витривалість", "Рухливість і профілактика", "Підходи", "Повторення", "Темп", "Відпочинок", "Інтенсивність", "Зона HR / MAS", "Примітки тренера", "Примітки спортсмена"]),
     })),
-    ...["Exercise Notes", "Conditioning Zones", "Testing Checkpoints", "Readiness"].map((tab) => ({
+    ...["Примітки до вправ", "Зони витривалості", "Контрольні тести", "Готовність"].map((tab) => ({
       name: tab,
-      rows: [["Field", "Value", "Coach / Athlete Note"], ...getInfoRows({ activeTab: tab, ...infoContext })],
+      rows: [["Поле", "Значення", "Примітка тренера або спортсмена"], ...getInfoRows({ activeTab: tab, ...infoContext })],
     })),
   ];
 
@@ -671,17 +684,17 @@ function buildWeekRows(rows: ProgramDay[], languageMode: LanguageMode, header: s
     ...rows.map((day) => {
       const lead = day.strength[0] || day.powerSpeed[0] || day.accessory[0];
       const coachNotes = [
-        languageMode !== "en" ? day.coachNotesUa : "",
+        languageMode !== "en" ? ukrainianNote(day.coachNotesUa) : "",
         languageMode !== "ua" ? day.coachNotesEn : "",
       ].filter(Boolean).join(" / ");
       const athleteNotes = [
-        languageMode !== "en" ? day.athleteNotesUa : "",
+        languageMode !== "en" ? ukrainianNote(day.athleteNotesUa) : "",
         languageMode !== "ua" ? day.athleteNotesEn : "",
       ].filter(Boolean).join(" / ");
       return [
-        day.day,
-        day.sessionGoal,
-        day.block,
+        programTextUa(day.day),
+        programTextUa(day.sessionGoal),
+        programTextUa(day.block),
         joinNames(day.warmup),
         joinNames(day.powerSpeed),
         joinNames(day.strength),
@@ -689,11 +702,11 @@ function buildWeekRows(rows: ProgramDay[], languageMode: LanguageMode, header: s
         joinNames(day.conditioning),
         joinNames(day.mobilityPrehab),
         lead?.sets || "-",
-        lead?.reps || "-",
+        prescriptionValueUa(lead?.reps || "-"),
         lead?.tempo || "-",
-        lead?.rest || "-",
-        lead?.intensity || "-",
-        day.conditioning[0]?.intensity || "Zone by method",
+        prescriptionValueUa(lead?.rest || "-"),
+        prescriptionValueUa(lead?.intensity || "-"),
+        day.conditioning[0]?.intensity ? prescriptionValueUa(day.conditioning[0].intensity) : "Зона за методикою",
         coachNotes,
         athleteNotes,
       ];
@@ -714,23 +727,13 @@ function xmlEscape(value: string) {
     .replaceAll("'", "&apos;");
 }
 
-function profileLabel(profile: CombatProfile) {
-  if (profile === "grappler") return "Grappler";
-  if (profile === "striker") return "Striker";
-  return "Striker + Grappler";
-}
-
-function list(items: string[]) {
-  return items.length ? items.join(", ") : "-";
-}
-
 function value(input: number | string | undefined, unit: string) {
   return input === "" || input === undefined ? "-" : `${input} ${unit}`;
 }
 
 function localizedReason(score: PrioritySheetScore, languageMode: LanguageMode) {
   return [
-    languageMode !== "en" ? score.reasonUa : "",
+    languageMode !== "en" ? priorityReasonUa(score.reasonUa) : "",
     languageMode !== "ua" ? score.reasonEn : "",
   ].filter(Boolean).join(" / ");
 }
@@ -745,15 +748,15 @@ function getZoneRows(assessment: Assessment) {
   const zone3High = hrMax ? Math.round(hrMax * 0.8) : "";
   const zone4Low = hrMax ? Math.round(hrMax * 0.8) : "";
   const zone4High = hrMax ? Math.round(hrMax * 0.9) : "";
-  const hrrZone2 = hrMax && restingHr ? `${Math.round((hrMax - restingHr) * 0.6 + restingHr)}-${Math.round((hrMax - restingHr) * 0.7 + restingHr)} bpm` : "-";
+  const hrrZone2 = hrMax && restingHr ? `${Math.round((hrMax - restingHr) * 0.6 + restingHr)}-${Math.round((hrMax - restingHr) * 0.7 + restingHr)} уд/хв` : "-";
 
   return [
-    ["HR Zone 2", hrMax ? `${zone2Low}-${zone2High} bpm` : "Use nasal/easy talk pace", "Aerobic base / mitochondria work"],
-    ["HR Zone 3", hrMax ? `${zone3Low}-${zone3High} bpm` : "Moderate controlled pace", "Tempo conditioning"],
-    ["HR Zone 4", hrMax ? `${zone4Low}-${zone4High} bpm` : "Hard but repeatable", "Round-specific intervals"],
-    ["HRR Zone 2", hrrZone2, "Uses resting HR when available"],
-    ["MAS 70%", mas ? `${(mas * 0.7).toFixed(2)} m/s` : "-", "Easy aerobic intervals"],
-    ["MAS 85%", mas ? `${(mas * 0.85).toFixed(2)} m/s` : "-", "Tempo / threshold work"],
-    ["MAS 100%", mas ? `${mas.toFixed(2)} m/s` : "-", "Max aerobic speed reference"],
+    ["Зона HR 2", hrMax ? `${zone2Low}-${zone2High} уд/хв` : "Легкий темп із вільною розмовою", "Аеробна база"],
+    ["Зона HR 3", hrMax ? `${zone3Low}-${zone3High} уд/хв` : "Помірний контрольований темп", "Темпова витривалість"],
+    ["Зона HR 4", hrMax ? `${zone4Low}-${zone4High} уд/хв` : "Важко, але повторювано", "Спеціальні інтервали для раундів"],
+    ["Зона HRR 2", hrrZone2, "Ураховує HR у спокої"],
+    ["MAS 70%", mas ? `${(mas * 0.7).toFixed(2)} м/с` : "-", "Легкі аеробні інтервали"],
+    ["MAS 85%", mas ? `${(mas * 0.85).toFixed(2)} м/с` : "-", "Темпова й порогова робота"],
+    ["MAS 100%", mas ? `${mas.toFixed(2)} м/с` : "-", "Орієнтир максимальної аеробної швидкості"],
   ];
 }

@@ -1,4 +1,13 @@
-import { Assessment, AthleteProfile, CombatLoad, CombatProfile } from "../types";
+import {
+  Assessment,
+  AthleteProfile,
+  CombatLoad,
+  CombatProfile,
+  MethodologyRuleReference,
+  MethodologySourceReference,
+  MethodologySupportStatus,
+} from "../types";
+import { getRuleEvidence } from "./methodology";
 
 export type PriorityScore = {
   id: string;
@@ -6,6 +15,9 @@ export type PriorityScore = {
   score: number;
   reasonUa: string;
   reasonEn: string;
+  ruleReferences: MethodologyRuleReference[];
+  sourceReferences: MethodologySourceReference[];
+  supportStatus: MethodologySupportStatus;
 };
 
 export function scorePriorities({
@@ -39,6 +51,11 @@ export function scorePriorities({
   const movementScore = Math.min(5, 1 + athleteProfile.painAreas.length);
   const recoveryScore = Math.min(5, Math.max(1, Math.round((6 - sleep + stress + soreness + (6 - motivation)) / 4)));
   const combatLoadScore = combatSessions >= 9 || hardDays >= 4 ? 5 : combatSessions >= 7 || hardDays >= 3 ? 4 : combatSessions >= 5 ? 3 : 2;
+  const evidence = getRuleEvidence(["bbp.priority.input-signals"]);
+  const methodology = {
+    ...evidence,
+    supportStatus: "unsupported" as const,
+  };
 
   return [
     {
@@ -47,6 +64,7 @@ export function scorePriorities({
       score: strengthScore,
       reasonUa: squat ? `Орієнтовне співвідношення сили до ваги: ${strengthRatio.toFixed(1)}x.` : "Немає силового тесту, тому сила поки невідома.",
       reasonEn: squat ? `Estimated strength-to-bodyweight ratio: ${strengthRatio.toFixed(1)}x.` : "No strength test yet, so strength is unknown.",
+      ...methodology,
     },
     {
       id: "power",
@@ -54,6 +72,7 @@ export function scorePriorities({
       score: powerScore,
       reasonUa: "Стрибки і кидки визначають акцент power/speed блоку.",
       reasonEn: "Jump and throw results drive the power/speed emphasis.",
+      ...methodology,
     },
     {
       id: "aerobic",
@@ -61,6 +80,7 @@ export function scorePriorities({
       score: aerobicScore,
       reasonUa: mas ? `MAS введено: ${mas}.` : "MAS не введено, зони будуть приблизними.",
       reasonEn: mas ? `MAS entered: ${mas}.` : "No MAS entered, zones will remain approximate.",
+      ...methodology,
     },
     {
       id: "repeat-effort",
@@ -68,6 +88,7 @@ export function scorePriorities({
       score: repeatEffortScore,
       reasonUa: "Важливо для раундів, scramble, клінчу і повторних вибухів.",
       reasonEn: "Important for rounds, scrambles, clinch, and repeated bursts.",
+      ...methodology,
     },
     {
       id: "movement-risk",
@@ -75,6 +96,7 @@ export function scorePriorities({
       score: movementScore,
       reasonUa: athleteProfile.painAreas.length ? `Позначені ризики: ${athleteProfile.painAreas.join(", ")}.` : "Ризики не позначені.",
       reasonEn: athleteProfile.painAreas.length ? `Marked risks: ${athleteProfile.painAreas.join(", ")}.` : "No risk flags selected.",
+      ...methodology,
     },
     {
       id: "recovery",
@@ -82,6 +104,7 @@ export function scorePriorities({
       score: recoveryScore,
       reasonUa: "Сон, стрес, soreness і мотивація впливають на обсяг.",
       reasonEn: "Sleep, stress, soreness, and motivation affect volume.",
+      ...methodology,
     },
     {
       id: "combat-load",
@@ -89,6 +112,7 @@ export function scorePriorities({
       score: combatLoadScore,
       reasonUa: `${combatSessions} бойових сесій, ${hardDays} важких днів на тиждень.`,
       reasonEn: `${combatSessions} combat sessions, ${hardDays} hard days per week.`,
+      ...methodology,
     },
   ].sort((a, b) => b.score - a.score);
 }

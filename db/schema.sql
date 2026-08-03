@@ -3,9 +3,24 @@ CREATE TABLE IF NOT EXISTS bbp_accounts (
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   role TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL,
-  sync_token_hash TEXT
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sync_token_hash TEXT,
+  password_hash TEXT
 );
+
+ALTER TABLE bbp_accounts ADD COLUMN IF NOT EXISTS sync_token_hash TEXT;
+ALTER TABLE bbp_accounts ADD COLUMN IF NOT EXISTS password_hash TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS bbp_accounts_email_lower_idx ON bbp_accounts (LOWER(email));
+
+CREATE TABLE IF NOT EXISTS bbp_sessions (
+  token_hash TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES bbp_accounts(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS bbp_sessions_account_idx ON bbp_sessions(account_id);
+CREATE INDEX IF NOT EXISTS bbp_sessions_expiry_idx ON bbp_sessions(expires_at);
 
 CREATE TABLE IF NOT EXISTS bbp_athletes (
   id TEXT PRIMARY KEY,
@@ -60,7 +75,7 @@ CREATE TABLE IF NOT EXISTS bbp_teams (
 CREATE TABLE IF NOT EXISTS bbp_team_memberships (
   id TEXT PRIMARY KEY,
   coach_id TEXT NOT NULL REFERENCES bbp_accounts(id) ON DELETE CASCADE,
-  athlete_account_id TEXT NOT NULL,
+  athlete_account_id TEXT NOT NULL REFERENCES bbp_accounts(id) ON DELETE CASCADE,
   payload JSONB NOT NULL,
   joined_at TIMESTAMPTZ NOT NULL
 );

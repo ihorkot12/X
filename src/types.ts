@@ -72,6 +72,69 @@ export interface ExercisePrescription {
   intensity?: string;
   notesUa?: string;
   notesEn?: string;
+  legacySourceReference?: ExerciseLibraryItem["sourceReference"];
+  sourceReferences?: MethodologySourceReference[];
+  ruleReferences?: MethodologyRuleReference[];
+  methodologySupport?: MethodologySupportStatus;
+}
+
+export type MethodologySupportStatus = "approved" | "unsupported";
+
+export interface MethodologySourceReference {
+  sourceId: string;
+  sourceTitle: string;
+  sourceVersion: string;
+  contentHash: `sha256:${string}`;
+  anchor: string;
+}
+
+export interface MethodologyRuleReference {
+  ruleId: string;
+  title: string;
+  status: "approved";
+  source: MethodologySourceReference;
+}
+
+export interface MethodologyDecisionTraceEntry {
+  id: string;
+  stage: "input" | "structure" | "loading" | "exercise-selection" | "safety" | "output";
+  decision: string;
+  outcome: string;
+  supportStatus: MethodologySupportStatus;
+  ruleReferences: MethodologyRuleReference[];
+  sourceReferences: MethodologySourceReference[];
+}
+
+export interface UnsupportedDecisionWarning {
+  code: string;
+  decision: string;
+  messageUa: string;
+  messageEn: string;
+  supportStatus: MethodologySupportStatus;
+  requiresCoachDecision: true;
+  affectedPaths: string[];
+  sourceReferences: MethodologySourceReference[];
+}
+
+export interface ProgramMethodologyMetadata {
+  methodologyVersion: string;
+  methodologyHash: `sha256:${string}`;
+  generatorVersion: string;
+  generatorHash: `sha256:${string}`;
+  matchedRuleIds: string[];
+  decisionTrace: MethodologyDecisionTraceEntry[];
+  warnings: UnsupportedDecisionWarning[];
+}
+
+export interface ProgramLifecycleMetadata {
+  status: "generated" | "saved" | "approved" | "assigned" | "archived";
+  revision: number;
+  generatorMode: "deterministic";
+  generatedAt?: string;
+  savedAt?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  parentProgramId?: string;
 }
 
 export type ExerciseCategory = "warmup" | "speed" | "power" | "strength" | "accessory" | "conditioning" | "mobility" | "prehab";
@@ -141,6 +204,8 @@ export interface ProgramWeek {
 export interface GeneratedProgram {
   summary: string;
   weeks: ProgramWeek[];
+  methodology?: ProgramMethodologyMetadata;
+  lifecycle?: ProgramLifecycleMetadata;
 }
 
 export interface SheetTab {
@@ -168,6 +233,8 @@ export interface SavedProgramRecord {
   programSettings: ProgramSettings;
   assessment: Assessment;
   program: GeneratedProgram;
+  methodology?: ProgramMethodologyMetadata;
+  lifecycle?: ProgramLifecycleMetadata;
 }
 
 export type TrainingLogStatus = "planned" | "done" | "modified" | "skipped";

@@ -1,4 +1,5 @@
 import { AthleteProfile, CombatProfile, ExerciseCategory, ExerciseLibraryItem } from "../types";
+import { getRuleEvidence } from "./methodology";
 
 type ExerciseLibraryInput = Omit<ExerciseLibraryItem, "contraindications"> & {
   contraindications?: string[];
@@ -563,6 +564,7 @@ export function prescribeExercise(
   overrides: Partial<Pick<ExerciseLibraryItem, "defaultSets" | "defaultReps" | "defaultTempo" | "defaultRest" | "defaultIntensity">> = {},
 ) {
   const exercise = findExercise(id);
+  const evidence = getRuleEvidence(["bbp.exercise.selection"]);
   return {
     name: exercise.nameEn,
     sets: overrides.defaultSets ?? exercise.defaultSets,
@@ -572,6 +574,9 @@ export function prescribeExercise(
     intensity: overrides.defaultIntensity ?? exercise.defaultIntensity,
     notesUa: exercise.notesUa,
     notesEn: exercise.notesEn,
+    legacySourceReference: exercise.sourceReference,
+    ...evidence,
+    methodologySupport: "unsupported" as const,
   };
 }
 

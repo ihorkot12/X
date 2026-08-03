@@ -10,6 +10,7 @@ import {
   ProgramWeek,
 } from "../types";
 import { prescribeBestExercise, prescribeExercise } from "./exerciseLibrary";
+import { createGeneratedLifecycle, createProgramMethodologyMetadata } from "./methodology";
 
 type GenerateProgramParams = {
   combatProfile: CombatProfile;
@@ -79,7 +80,15 @@ export function generateProgram(params: GenerateProgramParams): GeneratedProgram
 
   const summary = `${PROFILE_LABELS[combatProfile]} program for ${athleteProfile.name || "Athlete"}: ${programSettings.lengthWeeks} weeks, ${programSettings.scDaysPerWeek} S&C days/week, ${programSettings.phase}.`;
 
-  return { summary, weeks };
+  return {
+    summary,
+    weeks,
+    methodology: createProgramMethodologyMetadata({
+      hasPainFlags: athleteProfile.painAreas.length > 0,
+      includesTaper: programSettings.lengthWeeks >= 8,
+    }),
+    lifecycle: createGeneratedLifecycle(),
+  };
 }
 
 function getBlockName(week: number, length: number, isCheckpoint: boolean) {

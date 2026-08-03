@@ -9,9 +9,9 @@ import {
   Clock3,
   Download,
   FileSpreadsheet,
-  Flame,
   Info,
   Layout,
+  LoaderCircle,
   LogOut,
   Send,
   Shield,
@@ -43,6 +43,16 @@ import {
 import { generateProgram } from "./lib/programEngine";
 import { scorePriorities } from "./lib/priorityScoring";
 import { fetchRemoteSnapshot, pushRemoteSnapshot, remoteSyncEnabled, SyncSnapshot, SyncStatus } from "./lib/remoteSync";
+import {
+  AccountRole,
+  AuthAccount,
+  AuthClientError,
+  getCurrentAccount,
+  joinRemoteTeam,
+  loginAccount,
+  logoutAccount,
+  registerAccount,
+} from "./lib/authClient";
 import { AssessmentInputs } from "./components/forms/AssessmentInputs";
 import { ProgramDashboard } from "./components/program/ProgramDashboard";
 import { SheetPreview } from "./components/sheets/SheetPreview";
@@ -60,21 +70,46 @@ const TEAM_STORAGE_KEY = "bbp_teams_v1";
 const MEMBERSHIP_STORAGE_KEY = "bbp_team_memberships_v1";
 const TEST_HISTORY_STORAGE_KEY = "bbp_test_history_v1";
 
+type AuthMode = "login" | "register";
+type StoredAccount = UserAccount & { serverRole?: AccountRole };
+
+function toStoredAccount(account: AuthAccount): StoredAccount {
+  return {
+    id: account.id,
+    name: account.name,
+    email: account.email,
+    role: account.role === "methodology_editor" ? "admin" : account.role,
+    serverRole: account.role,
+    createdAt: account.createdAt,
+  };
+}
+
+function accountMetadata(account: StoredAccount): StoredAccount {
+  return {
+    id: account.id,
+    name: account.name,
+    email: account.email,
+    role: account.role,
+    ...(account.serverRole ? { serverRole: account.serverRole } : {}),
+    createdAt: account.createdAt,
+  };
+}
+
 const PROFILE_COPY: Record<CombatProfile, { title: string; summary: string; emphasis: string[] }> = {
   grappler: {
-    title: "Grappler",
-    summary: "Wrestling, sambo, judo, BJJ, or MMA with a grappling bias.",
-    emphasis: ["Posterior chain", "Grip and neck", "Carries and isometrics", "Repeated efforts"],
+    title: "Борець",
+    summary: "Боротьба, самбо, дзюдо, BJJ або MMA з акцентом на боротьбу.",
+    emphasis: ["Задня ланка", "Хват і шия", "Перенесення й ізометрія", "Повторні зусилля"],
   },
   striker: {
-    title: "Striker",
-    summary: "Boxing, karate, kickboxing, Muay Thai, or a striking-biased fighter.",
-    emphasis: ["Elastic power", "Rotational throws", "Footwork and decel", "Aerobic base"],
+    title: "Ударник",
+    summary: "Бокс, карате, кікбоксинг, муай-тай або боєць із акцентом на ударну техніку.",
+    emphasis: ["Вибухова сила", "Ротаційні кидки", "Робота ніг", "Аеробна база"],
   },
   hybrid: {
-    title: "Striker + Grappler",
-    summary: "MMA, combat sambo, or a mixed profile that must manage both stressors.",
-    emphasis: ["Balanced volume", "Power transfer", "Fight-specific conditioning", "Recovery management"],
+    title: "Ударник + борець",
+    summary: "MMA, бойове самбо або змішаний профіль із обома типами навантаження.",
+    emphasis: ["Збалансований обсяг", "Передавання зусилля", "Бойова витривалість", "Відновлення"],
   },
 };
 
@@ -82,7 +117,7 @@ export default function App() {
   const [step, setStep] = useState(1);
   const [highestStepReached, setHighestStepReached] = useState(1);
   const [userMode, setUserMode] = useState<UserMode>("coach");
-  const [languageMode, setLanguageMode] = useState<LanguageMode>("ua_en");
+  const [languageMode, setLanguageMode] = useState<LanguageMode>("ua");
   const [combatProfile, setCombatProfile] = useState<CombatProfile>("hybrid");
   const [combatLoad, setCombatLoad] = useState<CombatLoad>({
     strikingSessions: 3,
@@ -128,9 +163,14 @@ export default function App() {
     motivation: 5,
   });
   const [program, setProgram] = useState<GeneratedProgram | null>(null);
-  const [account, setAccount] = useState<UserAccount | null>(null);
-  const [accounts, setAccounts] = useState<UserAccount[]>([]);
-  const [authForm, setAuthForm] = useState({ name: "", email: "" });
+  const [account, setAccount] = useState<StoredAccount | null>(null);
+  const [accounts, setAccounts] = useState<StoredAccount[]>([]);
+  const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [sessionRestoring, setSessionRestoring] = useState(remoteSyncEnabled);
+  const [joinLoading, setJoinLoading] = useState(false);
   const [allSavedAthletes, setAllSavedAthletes] = useState<SavedAthleteProfile[]>([]);
   const [allSavedPrograms, setAllSavedPrograms] = useState<SavedProgramRecord[]>([]);
   const [allTrainingLogs, setAllTrainingLogs] = useState<TrainingLogEntry[]>([]);
@@ -140,7 +180,7 @@ export default function App() {
   const [logDraft, setLogDraft] = useState({
     date: new Date().toISOString().slice(0, 10),
     week: "1",
-    day: "Day 1",
+    day: "День 1",
     status: "done" as TrainingLogStatus,
     readiness: "4",
     sessionRpe: "7",
@@ -148,26 +188,30 @@ export default function App() {
     painNote: "",
     notes: "",
   });
-  const [teamDraft, setTeamDraft] = useState({ name: "Fight Team", joinCode: "" });
-  const [testDraft, setTestDraft] = useState({ date: new Date().toISOString().slice(0, 10), microcycle: "Week 4 checkpoint", notes: "" });
+  const [teamDraft, setTeamDraft] = useState({ name: "Спортивна команда", joinCode: "" });
+  const [testDraft, setTestDraft] = useState({ date: new Date().toISOString().slice(0, 10), microcycle: "Контроль наприкінці 4-го тижня", notes: "" });
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("local");
   const [backupMessage, setBackupMessage] = useState("");
-  const [aiDraft, setAiDraft] = useState("Explain the biggest risk in this block and what the coach should watch in week 1.");
+  const [aiDraft, setAiDraft] = useState("Поясни головний ризик цього блоку й за чим тренеру стежити в перший тиждень.");
   const [aiResponse, setAiResponse] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
 
   const steps = [
-    { name: "Start", icon: Shield },
-    { name: "Combat", icon: Target },
-    { name: "Athlete", icon: User },
-    { name: "Settings", icon: Activity },
-    { name: "Assessment", icon: Info },
-    { name: "Program", icon: Layout },
-    { name: "Sheet", icon: FileSpreadsheet },
+    { name: "Початок", icon: Shield },
+    { name: "Бій", icon: Target },
+    { name: "Спортсмен", icon: User },
+    { name: "Параметри", icon: Activity },
+    { name: "Оцінювання", icon: Info },
+    { name: "Програма", icon: Layout },
+    { name: "Таблиця", icon: FileSpreadsheet },
   ];
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [step]);
 
   const profileSummary = useMemo(() => PROFILE_COPY[combatProfile], [combatProfile]);
   const priorityScores = useMemo(
@@ -211,19 +255,21 @@ export default function App() {
   useEffect(() => {
     try {
       const rawAccounts = window.localStorage.getItem(ACCOUNT_STORAGE_KEY);
-      const parsedAccounts: UserAccount[] = rawAccounts ? JSON.parse(rawAccounts) : [];
-      const migratedAccounts = parsedAccounts.map((item) => ({ ...item, syncToken: item.syncToken || createId("sync") }));
+      const parsedAccounts: StoredAccount[] = rawAccounts ? JSON.parse(rawAccounts) : [];
+      const migratedAccounts = parsedAccounts.map((item) =>
+        remoteSyncEnabled ? accountMetadata(item) : { ...item, syncToken: item.syncToken || createId("sync") },
+      );
       if (rawAccounts && JSON.stringify(parsedAccounts) !== JSON.stringify(migratedAccounts)) {
         window.localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(migratedAccounts));
       }
       setAccounts(migratedAccounts);
 
-      const sessionId = window.localStorage.getItem(SESSION_STORAGE_KEY);
+      const sessionId = remoteSyncEnabled ? null : window.localStorage.getItem(SESSION_STORAGE_KEY);
       const sessionAccount = migratedAccounts.find((item) => item.id === sessionId) ?? null;
       setAccount(sessionAccount);
       if (sessionAccount) {
         setUserMode(sessionAccount.role);
-        setAuthForm({ name: sessionAccount.name, email: sessionAccount.email });
+        setAuthForm({ name: sessionAccount.name, email: sessionAccount.email, password: "" });
       }
 
       const raw = window.localStorage.getItem(ATHLETE_STORAGE_KEY);
@@ -302,19 +348,57 @@ export default function App() {
     setStep(1);
   };
 
-  const saveAccounts = (nextAccounts: UserAccount[]) => {
-    setAccounts(nextAccounts);
-    window.localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(nextAccounts));
+  const saveAccounts = (nextAccounts: StoredAccount[]) => {
+    const accountsToStore = remoteSyncEnabled ? nextAccounts.map(accountMetadata) : nextAccounts;
+    setAccounts(accountsToStore);
+    window.localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(accountsToStore));
   };
 
-  const handleAuth = () => {
+  const finishAuthentication = (nextAccount: StoredAccount) => {
+    saveAccounts([nextAccount, ...accounts.filter((item) => item.id !== nextAccount.id && item.email !== nextAccount.email)]);
+    setAccount(nextAccount);
+    setUserMode(nextAccount.role);
+    setAuthForm({ name: nextAccount.name, email: nextAccount.email, password: "" });
+    if (remoteSyncEnabled) window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    else window.localStorage.setItem(SESSION_STORAGE_KEY, nextAccount.id);
+    setAuthError("");
+    setFormErrors([]);
+  };
+
+  const handleAuth = async () => {
     const email = authForm.email.trim().toLowerCase();
     const name = authForm.name.trim();
     const errors: string[] = [];
-    if (!email || !email.includes("@")) errors.push("Enter a valid email for the account.");
-    if (!name && !accounts.some((item) => item.email === email)) errors.push("Enter your name to create a new account.");
+    if (!email || !email.includes("@")) errors.push("Введіть коректну електронну адресу.");
+    if (remoteSyncEnabled && (authForm.password.length < 10 || authForm.password.length > 128)) {
+      errors.push("Пароль має містити від 10 до 128 символів.");
+    }
+    if (remoteSyncEnabled && authMode === "register" && !name) errors.push("Введіть ім'я, щоб створити обліковий запис.");
+    if (!remoteSyncEnabled && !name && !accounts.some((item) => item.email === email)) errors.push("Введіть ім'я, щоб створити обліковий запис.");
     setFormErrors(errors);
     if (errors.length) return;
+
+    if (remoteSyncEnabled) {
+      setAuthLoading(true);
+      setAuthError("");
+      try {
+        const authenticated = authMode === "login"
+          ? await loginAccount({ email, password: authForm.password })
+          : await registerAccount({
+              name,
+              email,
+              password: authForm.password,
+              role: userMode === "coach" ? "coach" : "athlete",
+            });
+        finishAuthentication(toStoredAccount(authenticated));
+      } catch (error) {
+        setAuthError(error instanceof Error ? error.message : "Не вдалося виконати вхід. Повторіть спробу.");
+      } finally {
+        setAuthForm((current) => ({ ...current, password: "" }));
+        setAuthLoading(false);
+      }
+      return;
+    }
 
     const existing = accounts.find((item) => item.email === email);
     const nextAccount =
@@ -328,15 +412,10 @@ export default function App() {
         syncToken: createId("sync"),
       } satisfies UserAccount);
 
-    if (!existing) saveAccounts([nextAccount, ...accounts]);
-    setAccount(nextAccount);
-    setUserMode(nextAccount.role);
-    setAuthForm({ name: nextAccount.name, email: nextAccount.email });
-    window.localStorage.setItem(SESSION_STORAGE_KEY, nextAccount.id);
-    setFormErrors([]);
+    finishAuthentication(nextAccount);
   };
 
-  const logout = () => {
+  const clearAuthenticatedState = () => {
     setAccount(null);
     setProgram(null);
     setFormErrors([]);
@@ -345,10 +424,26 @@ export default function App() {
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
   };
 
+  const logout = async () => {
+    setAuthError("");
+    if (remoteSyncEnabled) {
+      setAuthLoading(true);
+      try {
+        await logoutAccount();
+      } catch (error) {
+        setAuthError(error instanceof Error ? error.message : "Не вдалося завершити сеанс. Повторіть спробу.");
+        setAuthLoading(false);
+        return;
+      }
+      setAuthLoading(false);
+    }
+    clearAuthenticatedState();
+  };
+
   const exportBackup = () => {
     if (!account) {
-      setFormErrors(["Register or log in before exporting a backup."]);
-      setBackupMessage("Log in first, then export a backup.");
+      setFormErrors(["Увійдіть або зареєструйтеся перед експортом резервної копії."]);
+      setBackupMessage("Спочатку увійдіть, а потім експортуйте резервну копію.");
       return;
     }
     const backup = {
@@ -370,7 +465,7 @@ export default function App() {
     link.download = `bbp-backup-${account.email.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    setBackupMessage("Backup downloaded. Keep this JSON file if you are testing on another browser or computer.");
+    setBackupMessage("Резервну копію завантажено. Збережіть цей JSON-файл для роботи в іншому браузері або на іншому комп'ютері.");
   };
 
   const importBackup = async (file: File | null) => {
@@ -386,12 +481,17 @@ export default function App() {
         testHistory?: TestHistoryEntry[];
       };
       if (!payload.account?.id || !payload.account.email) {
-        setFormErrors(["Backup file is missing account data."]);
-        setBackupMessage("Import failed: this is not a valid BBP backup.");
+        setFormErrors(["У резервній копії немає даних облікового запису."]);
+        setBackupMessage("Не вдалося імпортувати: це не резервна копія Black Bear.");
+        return;
+      }
+      if (remoteSyncEnabled && !account) {
+        setFormErrors(["Увійдіть, перш ніж імпортувати дані в серверному режимі."]);
+        setBackupMessage("Імпорт не виконано: потрібен активний сеанс.");
         return;
       }
 
-      const importedAccount = payload.account;
+      const importedAccount = remoteSyncEnabled ? account! : payload.account;
       const nextAccounts = [importedAccount, ...accounts.filter((item) => item.id !== importedAccount.id)];
       const importedAthletes = (payload.athletes || []).map((athlete) => ({ ...athlete, ownerId: importedAccount.id }));
       const importedPrograms = (payload.programs || []).map((record) => ({ ...record, ownerId: importedAccount.id }));
@@ -410,25 +510,25 @@ export default function App() {
       saveAccounts(nextAccounts);
       setAccount(importedAccount);
       setUserMode(importedAccount.role);
-      setAuthForm({ name: importedAccount.name, email: importedAccount.email });
+      setAuthForm({ name: importedAccount.name, email: importedAccount.email, password: "" });
       setAllSavedAthletes(nextAthletes);
       setAllSavedPrograms(nextPrograms);
       setAllTrainingLogs(nextLogs);
       setAllTeams(nextTeams);
       setAllMemberships(nextMemberships);
       setAllTestHistory(nextTestHistory);
-      window.localStorage.setItem(SESSION_STORAGE_KEY, importedAccount.id);
+      if (!remoteSyncEnabled) window.localStorage.setItem(SESSION_STORAGE_KEY, importedAccount.id);
       window.localStorage.setItem(ATHLETE_STORAGE_KEY, JSON.stringify(nextAthletes));
       window.localStorage.setItem(PROGRAM_STORAGE_KEY, JSON.stringify(nextPrograms));
       window.localStorage.setItem(TRAINING_LOG_STORAGE_KEY, JSON.stringify(nextLogs));
       window.localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(nextTeams));
       window.localStorage.setItem(MEMBERSHIP_STORAGE_KEY, JSON.stringify(nextMemberships));
       window.localStorage.setItem(TEST_HISTORY_STORAGE_KEY, JSON.stringify(nextTestHistory));
-      setBackupMessage(`Backup imported: ${importedAthletes.length} athletes, ${importedPrograms.length} programs, ${importedLogs.length} logs, ${importedTeams.length} teams.`);
+      setBackupMessage(`Імпортовано: спортсменів - ${importedAthletes.length}, програм - ${importedPrograms.length}, записів - ${importedLogs.length}, команд - ${importedTeams.length}.`);
       setFormErrors([]);
     } catch {
-      setFormErrors(["Could not import backup. Check that the file is a valid BBP backup JSON."]);
-      setBackupMessage("Import failed. Choose a BBP backup JSON file.");
+      setFormErrors(["Не вдалося імпортувати резервну копію. Перевірте, чи це коректний JSON-файл Black Bear."]);
+      setBackupMessage("Імпорт не виконано. Виберіть JSON-файл резервної копії Black Bear.");
     }
   };
 
@@ -459,7 +559,7 @@ export default function App() {
     setFormErrors(errors);
     if (errors.length) return;
     if (!account) {
-      setFormErrors(["Register or log in before generating a saved program."]);
+      setFormErrors(["Увійдіть або зареєструйтеся, щоб створити й зберегти програму."]);
       return;
     }
     const result = generateProgram({
@@ -477,24 +577,24 @@ export default function App() {
   const validateStep = (targetStep: number) => {
     const errors: string[] = [];
     if (targetStep === 1 && !account) {
-      errors.push("Register or log in first so athletes and logs are saved to your account.");
+      errors.push("Спочатку увійдіть або зареєструйтеся, щоб зберігати спортсменів і журнал.");
     }
     if (targetStep === 2) {
       const totalCombatSessions = combatLoad.strikingSessions + combatLoad.grapplingSessions + combatLoad.technicalSessions;
-      if (totalCombatSessions < 1) errors.push("Add at least one weekly combat session.");
-      if (combatLoad.hardSparringDays > combatLoad.strikingSessions) errors.push("Hard sparring days cannot exceed striking sessions.");
-      if (combatLoad.hardGrapplingDays > combatLoad.grapplingSessions) errors.push("Hard wrestling days cannot exceed grappling sessions.");
+      if (totalCombatSessions < 1) errors.push("Додайте щонайменше одне бойове тренування на тиждень.");
+      if (combatLoad.hardSparringDays > combatLoad.strikingSessions) errors.push("Важких спарингів не може бути більше, ніж ударних тренувань.");
+      if (combatLoad.hardGrapplingDays > combatLoad.grapplingSessions) errors.push("Важких борцівських днів не може бути більше, ніж тренувань з боротьби.");
     }
     if (targetStep === 3) {
-      if (!athleteProfile.name.trim()) errors.push("Athlete name is required before saving/generating.");
-      if (!athleteProfile.age || Number(athleteProfile.age) < 12 || Number(athleteProfile.age) > 70) errors.push("Age must be between 12 and 70.");
-      if (!athleteProfile.weightKg || Number(athleteProfile.weightKg) < 30 || Number(athleteProfile.weightKg) > 180) errors.push("Weight must be realistic in kg.");
-      if (!athleteProfile.heightCm || Number(athleteProfile.heightCm) < 120 || Number(athleteProfile.heightCm) > 230) errors.push("Height must be realistic in cm.");
+      if (!athleteProfile.name.trim()) errors.push("Перед збереженням або створенням програми вкажіть ім'я спортсмена.");
+      if (!athleteProfile.age || Number(athleteProfile.age) < 12 || Number(athleteProfile.age) > 70) errors.push("Вік має бути від 12 до 70 років.");
+      if (!athleteProfile.weightKg || Number(athleteProfile.weightKg) < 30 || Number(athleteProfile.weightKg) > 180) errors.push("Вкажіть коректну вагу в кілограмах.");
+      if (!athleteProfile.heightCm || Number(athleteProfile.heightCm) < 120 || Number(athleteProfile.heightCm) > 230) errors.push("Вкажіть коректний зріст у сантиметрах.");
     }
     if (targetStep === 5) {
       for (const key of ["sleep", "stress", "soreness", "motivation"] as const) {
         const value = Number(assessment[key]);
-        if (value < 1 || value > 5) errors.push(`${key} must be from 1 to 5.`);
+        if (value < 1 || value > 5) errors.push(`${readinessLabel(key)}: значення має бути від 1 до 5.`);
       }
     }
     return errors;
@@ -523,7 +623,7 @@ export default function App() {
       id: createId("program"),
       ownerId: account.id,
       athleteId,
-      athleteName: athleteProfile.name.trim() || "Athlete",
+      athleteName: athleteProfile.name.trim() || "Спортсмен",
       savedAt: new Date().toISOString(),
       combatProfile,
       combatLoad,
@@ -537,7 +637,7 @@ export default function App() {
 
   const saveAthleteProfile = () => {
     if (!account) {
-      setFormErrors(["Register or log in before saving athletes."]);
+      setFormErrors(["Увійдіть або зареєструйтеся, щоб зберігати спортсменів."]);
       return;
     }
     const errors = validateStep(3);
@@ -590,16 +690,16 @@ export default function App() {
 
   const saveTrainingLog = () => {
     if (!account) {
-      setFormErrors(["Register or log in before saving training logs."]);
+      setFormErrors(["Увійдіть або зареєструйтеся, щоб зберігати журнал тренувань."]);
       return;
     }
     if (!athleteProfile.name.trim()) {
-      setFormErrors(["Load or create an athlete before saving a training log."]);
+      setFormErrors(["Завантажте або створіть профіль спортсмена перед записом у журнал."]);
       return;
     }
     const readiness = Number(logDraft.readiness);
     if (readiness < 1 || readiness > 5) {
-      setFormErrors(["Log readiness must be from 1 to 5."]);
+      setFormErrors(["Готовність у журналі має бути від 1 до 5."]);
       return;
     }
 
@@ -610,7 +710,7 @@ export default function App() {
       athleteName: athleteProfile.name.trim(),
       date: logDraft.date || new Date().toISOString().slice(0, 10),
       week: Number(logDraft.week) || 1,
-      day: logDraft.day || "Day 1",
+      day: logDraft.day || "День 1",
       status: logDraft.status,
       readiness,
       notes: logDraft.notes.trim(),
@@ -646,10 +746,10 @@ export default function App() {
 
   const createTeam = () => {
     if (!account) {
-      setFormErrors(["Register or log in before creating a team."]);
+      setFormErrors(["Увійдіть або зареєструйтеся, щоб створити команду."]);
       return;
     }
-    const name = teamDraft.name.trim() || `${account.name} Team`;
+    const name = teamDraft.name.trim() || `Команда ${account.name}`;
     const team: TeamRecord = {
       id: createId("team"),
       ownerId: account.id,
@@ -662,24 +762,63 @@ export default function App() {
     setFormErrors([]);
   };
 
-  const joinTeam = () => {
+  const joinTeam = async () => {
     if (!account) {
-      setFormErrors(["Register or log in before joining a team."]);
+      setFormErrors(["Увійдіть або зареєструйтеся, щоб приєднатися до команди."]);
       return;
     }
     const code = teamDraft.joinCode.trim().toUpperCase();
+    if (!code) {
+      setFormErrors(["Введіть код команди."]);
+      return;
+    }
+    if (remoteSyncEnabled) {
+      setJoinLoading(true);
+      setFormErrors([]);
+      try {
+        const athleteName = athleteProfile.name.trim() || account.name;
+        const athleteProfileId = athleteProfile.name.trim() ? getAthleteId(account.id, athleteProfile.name) : undefined;
+        const result = await joinRemoteTeam({ joinCode: code, athleteName, athleteProfileId });
+        const membership: TeamMembership = {
+          ...result.membership,
+          athleteEmail: result.membership.athleteEmail || account.email,
+          athleteProfileId: result.membership.athleteProfileId || athleteProfileId,
+        };
+        const team: TeamRecord = {
+          ...result.team,
+          joinCode: "",
+        };
+        const nextTeams = [team, ...allTeams.filter((item) => item.id !== team.id)];
+        const nextMemberships = [
+          membership,
+          ...allMemberships.filter(
+            (item) => item.id !== membership.id && !(item.teamId === membership.teamId && item.athleteAccountId === membership.athleteAccountId),
+          ),
+        ];
+        setAllTeams(nextTeams);
+        setAllMemberships(nextMemberships);
+        window.localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(nextTeams));
+        window.localStorage.setItem(MEMBERSHIP_STORAGE_KEY, JSON.stringify(nextMemberships));
+        setTeamDraft((current) => ({ ...current, joinCode: "" }));
+      } catch (error) {
+        setFormErrors([error instanceof Error ? error.message : "Не вдалося приєднатися до команди."]);
+      } finally {
+        setJoinLoading(false);
+      }
+      return;
+    }
     const team = allTeams.find((item) => item.joinCode.toUpperCase() === code);
     if (!team) {
-      setFormErrors(["Team code was not found on this device or backup."]);
+      setFormErrors(["Код команди не знайдено на цьому пристрої або в резервній копії."]);
       return;
     }
     if (team.ownerId === account.id) {
-      setFormErrors(["You own this team already."]);
+      setFormErrors(["Ви вже є власником цієї команди."]);
       return;
     }
     const existing = allMemberships.find((membership) => membership.teamId === team.id && membership.athleteAccountId === account.id);
     if (existing) {
-      setFormErrors(["You are already connected to this team."]);
+      setFormErrors(["Ви вже приєднані до цієї команди."]);
       return;
     }
     const membership: TeamMembership = {
@@ -699,11 +838,11 @@ export default function App() {
 
   const saveTestEntry = () => {
     if (!account) {
-      setFormErrors(["Register or log in before saving test history."]);
+      setFormErrors(["Увійдіть або зареєструйтеся, щоб зберігати історію тестів."]);
       return;
     }
     if (!athleteProfile.name.trim()) {
-      setFormErrors(["Load or create an athlete before saving test history."]);
+      setFormErrors(["Завантажте або створіть профіль спортсмена перед збереженням тесту."]);
       return;
     }
     const entry: TestHistoryEntry = {
@@ -712,7 +851,7 @@ export default function App() {
       athleteId: getAthleteId(account.id, athleteProfile.name),
       athleteName: athleteProfile.name.trim(),
       date: testDraft.date || new Date().toISOString().slice(0, 10),
-      microcycle: testDraft.microcycle.trim() || "Checkpoint",
+      microcycle: testDraft.microcycle.trim() || "Контрольний тест",
       squatOrTrapBar: assessment.squatOrTrapBar,
       benchOrPushups: assessment.benchOrPushups,
       pullups: assessment.pullups,
@@ -749,11 +888,11 @@ export default function App() {
 
   const askGemini = async () => {
     if (!account) {
-      setAiError("Register or log in before using Gemini.");
+      setAiError("Увійдіть або зареєструйтеся, щоб користуватися Gemini.");
       return;
     }
     if (!aiDraft.trim()) {
-      setAiError("Enter a question for Gemini.");
+      setAiError("Введіть запитання для Gemini.");
       return;
     }
     setAiLoading(true);
@@ -762,12 +901,13 @@ export default function App() {
     try {
       const response = await fetch("/api/gemini", {
         method: "POST",
+        credentials: remoteSyncEnabled ? "include" : "same-origin",
         headers: {
           "Content-Type": "application/json",
-          "X-BBP-Account-Id": account.id,
+          ...(remoteSyncEnabled ? {} : { "X-BBP-Account-Id": account.id }),
         },
         body: JSON.stringify({
-          accountId: account.id,
+          ...(remoteSyncEnabled ? {} : { accountId: account.id }),
           prompt: buildGeminiPrompt({
             question: aiDraft,
             userMode,
@@ -781,13 +921,13 @@ export default function App() {
       });
       const contentType = response.headers.get("content-type") || "";
       const payload = contentType.includes("application/json") ? await response.json() : null;
-      if (!response.ok) throw new Error(payload?.error || "Gemini request failed.");
-      setAiResponse(payload?.text || "Gemini returned an empty response.");
+      if (!response.ok) throw new Error(payload?.error || "Не вдалося надіслати запит до Gemini.");
+      setAiResponse(payload?.text || "Gemini повернув порожню відповідь.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Gemini request failed.";
+      const message = error instanceof Error ? error.message : "Не вдалося надіслати запит до Gemini.";
       setAiError(
         message.includes("Unexpected end of JSON") || message.includes("Failed to fetch")
-          ? "Gemini is temporarily unavailable. The training plan still works; try AI coach notes again after the backend is available."
+          ? "Gemini тимчасово недоступний. Програма працює; повторіть запит, коли відновиться зв'язок із сервером."
           : message,
       );
     } finally {
@@ -810,7 +950,9 @@ export default function App() {
 
   const applyRemoteSnapshot = (snapshot: SyncSnapshot) => {
     const currentAccount = accounts.find((item) => item.id === snapshot.account.id || item.email === snapshot.account.email) || account;
-    const mergedAccount = { ...snapshot.account, syncToken: currentAccount?.syncToken || snapshot.account.syncToken || createId("sync") };
+    const mergedAccount: StoredAccount = remoteSyncEnabled
+      ? accountMetadata({ ...snapshot.account, serverRole: currentAccount?.serverRole })
+      : { ...snapshot.account, syncToken: currentAccount?.syncToken || snapshot.account.syncToken || createId("sync") };
     const nextAccounts = [mergedAccount, ...accounts.filter((item) => item.id !== mergedAccount.id && item.email !== mergedAccount.email)];
     const nextAthletes = [...snapshot.athletes, ...allSavedAthletes.filter((athlete) => athlete.ownerId !== mergedAccount.id)];
     const nextPrograms = [...snapshot.programs, ...allSavedPrograms.filter((record) => record.ownerId !== mergedAccount.id)];
@@ -822,7 +964,7 @@ export default function App() {
     setAccounts(nextAccounts);
     setAccount(mergedAccount);
     setUserMode(mergedAccount.role);
-    setAuthForm({ name: mergedAccount.name, email: mergedAccount.email });
+    setAuthForm({ name: mergedAccount.name, email: mergedAccount.email, password: "" });
     setAllSavedAthletes(nextAthletes);
     setAllSavedPrograms(nextPrograms);
     setAllTrainingLogs(nextLogs);
@@ -831,7 +973,7 @@ export default function App() {
     setAllTestHistory(nextTestHistory);
 
     window.localStorage.setItem(ACCOUNT_STORAGE_KEY, JSON.stringify(nextAccounts));
-    window.localStorage.setItem(SESSION_STORAGE_KEY, mergedAccount.id);
+    if (!remoteSyncEnabled) window.localStorage.setItem(SESSION_STORAGE_KEY, mergedAccount.id);
     window.localStorage.setItem(ATHLETE_STORAGE_KEY, JSON.stringify(nextAthletes));
     window.localStorage.setItem(PROGRAM_STORAGE_KEY, JSON.stringify(nextPrograms));
     window.localStorage.setItem(TRAINING_LOG_STORAGE_KEY, JSON.stringify(nextLogs));
@@ -855,6 +997,30 @@ export default function App() {
       setSyncStatus("offline");
     }
   };
+
+  useEffect(() => {
+    if (!dataLoaded || !remoteSyncEnabled) return;
+    let cancelled = false;
+    setSessionRestoring(true);
+    getCurrentAccount()
+      .then((restoredAccount) => {
+        if (!cancelled) finishAuthentication(toStoredAccount(restoredAccount));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        clearAuthenticatedState();
+        if (!(error instanceof AuthClientError && (error.status === 401 || error.status === 403))) {
+          setAuthError(error instanceof Error ? error.message : "Не вдалося відновити сеанс.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setSessionRestoring(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dataLoaded]);
 
   useEffect(() => {
     if (!dataLoaded || !account) return;
@@ -910,7 +1076,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="font-display text-lg font-black uppercase leading-none text-white">Black Bear</h1>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted)]">Combat Performance System</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted)]">Система спортивної підготовки</p>
             </div>
           </div>
           <div className="grid gap-2">
@@ -946,9 +1112,9 @@ export default function App() {
             </nav>
             <div className="grid gap-1">
               <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted)]">
-                <span>Onboarding progress</span>
+                <span>Налаштування</span>
                 <span>
-                  Step {step}/{steps.length}
+                  Крок {step}/{steps.length}
                 </span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
@@ -960,70 +1126,75 @@ export default function App() {
 
         <main className="min-h-[620px]">
           <ErrorList errors={formErrors} />
-          <CurrentSummary
-            account={account}
-            languageMode={languageMode}
-            userMode={userMode}
-            combatProfile={combatProfile}
-            athleteProfile={athleteProfile}
-            programSettings={programSettings}
-          />
-          <NextActionBar
-            step={step}
-            account={account}
-            athleteProfile={athleteProfile}
-            program={program}
-            savedProgramsCount={savedPrograms.length}
-            logsCount={trainingLogs.length}
-          />
+          {step > 1 && (
+            <>
+              <CurrentSummary
+                account={account}
+                languageMode={languageMode}
+                userMode={userMode}
+                combatProfile={combatProfile}
+                athleteProfile={athleteProfile}
+                programSettings={programSettings}
+              />
+              <NextActionBar
+                step={step}
+                account={account}
+                athleteProfile={athleteProfile}
+                program={program}
+                savedProgramsCount={savedPrograms.length}
+                logsCount={trainingLogs.length}
+              />
+            </>
+          )}
 
           {step === 1 && (
-            <ScreenShell eyebrow="Step 1" title="Performance system" description="Log in, choose coach or athlete mode, then continue to the fighter profile. Stable athlete data stays saved so the next block starts faster.">
+            <ScreenShell eyebrow="Крок 1" title="Система підготовки" description="Увійдіть, виберіть роль і перейдіть до профілю спортсмена. Постійні дані зберігатимуться для наступних блоків.">
               <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
                 <Card className="premium-reveal grid gap-5 border-[var(--bbp-border-strong)] bg-[linear-gradient(145deg,rgba(13,20,27,0.98),rgba(7,11,16,0.98))]">
                   <div className="grid gap-3 border-b border-[var(--bbp-border)] pb-4 md:grid-cols-[1fr_auto] md:items-end">
                     <div>
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c7f4ff]">Combat performance operating system</p>
-                      <h2 className="font-display mt-2 max-w-3xl text-3xl font-black text-white md:text-5xl">Build the block. Run the week. Track the fighter.</h2>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c7f4ff]">Система підготовки спортсменів</p>
+                      <h2 className="font-display mt-2 max-w-3xl text-3xl font-black text-white md:text-5xl">Створюйте блоки. Проводьте тренування. Стежте за прогресом.</h2>
                       <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--bbp-muted)]">
-                        Ukrainian and English outputs, coach teams, athlete logs, checkpoint tests, and OTA-style export in one workflow.
+                        Українські й англійські матеріали, команди тренерів, журнали спортсменів, контрольні тести та експорт у форматі OTA.
                       </p>
                       <div className="mt-4 flex flex-wrap gap-2">
-                        <StatusPill tone="gold" label="Combat S&C logic" />
-                        <StatusPill tone="green" label="Coach + athlete workspace" />
-                        <StatusPill tone="red" label="Risk-aware planning" />
+                        <StatusPill tone="gold" label="Логіка бойової підготовки" />
+                        <StatusPill tone="green" label="Простір тренера й спортсмена" />
+                        <StatusPill tone="red" label="Контроль ризиків" />
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center">
-                      <StatBox label="Weeks" value="4-12" />
-                      <StatBox label="Roles" value="3" />
-                      <StatBox label="Export" value="XLS" />
+                      <StatBox label="Тижні" value="4-12" />
+                      <StatBox label="Ролі" value="3" />
+                      <StatBox label="Експорт" value="XLS" />
                     </div>
                   </div>
-                  <PremiumWorkflow />
                   <SegmentedControl
-                    label="Language mode"
+                    label="Мова матеріалів"
                     value={languageMode}
                     onChange={(value) => setLanguageMode(value as LanguageMode)}
                     options={[
-                      { label: "UA", value: "ua" },
-                      { label: "EN", value: "en" },
-                      { label: "UA + EN", value: "ua_en" },
+                      { label: "Українська", value: "ua" },
+                      { label: "Англійська", value: "en" },
+                      { label: "Обидві", value: "ua_en" },
                     ]}
                   />
                   <SegmentedControl
-                    label="User mode"
+                    label="Роль користувача"
                     value={userMode}
                     disabled={Boolean(account)}
                     onChange={(value) => setUserMode(value as UserMode)}
                     options={[
-                      { label: "Athlete", value: "athlete" },
-                      { label: "Coach", value: "coach" },
-                      { label: "Admin", value: "admin" },
+                      { label: "Спортсмен", value: "athlete" },
+                      { label: "Тренер", value: "coach" },
+                      ...(!remoteSyncEnabled ? [{ label: "Адміністратор", value: "admin" }] : []),
                     ]}
                   />
                   <p className="rounded-md border border-zinc-800 bg-black/45 p-3 text-xs leading-5 text-zinc-400">
-                    Athlete mode is for one fighter. Coach mode keeps teams and logs. Admin mode is a local MVP overview for accounts, programs, and system checks.
+                    {remoteSyncEnabled
+                      ? "Спортсмен веде власний журнал тренувань. Тренер працює з командами й журналами. Службові ролі призначає сервер."
+                      : "Спортсмен веде власний журнал тренувань. Тренер працює з командами й журналами. Адміністратор переглядає облікові записи, програми та стан системи."}
                   </p>
                   <AccountPanel
                     account={account}
@@ -1033,7 +1204,11 @@ export default function App() {
                     onLogout={logout}
                     syncStatus={syncStatus}
                     onSyncNow={syncNow}
-                    authActionLabel={accounts.some((item) => item.email === authForm.email.trim().toLowerCase()) ? "Login" : "Register"}
+                    authActionLabel={remoteSyncEnabled ? (authMode === "login" ? "Увійти" : "Зареєструватися") : accounts.some((item) => item.email === authForm.email.trim().toLowerCase()) ? "Увійти" : "Зареєструватися"}
+                    authMode={authMode}
+                    setAuthMode={setAuthMode}
+                    loading={authLoading || sessionRestoring}
+                    error={authError}
                   />
                   <DataBackupPanel
                     account={account}
@@ -1066,11 +1241,12 @@ export default function App() {
                       setDraft={setTeamDraft}
                       onCreateTeam={createTeam}
                       onJoinTeam={joinTeam}
+                      joinLoading={joinLoading}
                       onLoadTestEntry={loadTestEntry}
                     />
                   )}
                   <Button onClick={nextStep} className="mt-2 w-full md:w-fit">
-                    Continue to Combat Profile <ChevronRight className="h-4 w-4" />
+                    До профілю бійця <ChevronRight className="h-4 w-4" />
                   </Button>
                 </Card>
                 <StartWorkbenchCard
@@ -1085,14 +1261,14 @@ export default function App() {
           )}
 
           {step === 2 && (
-            <ScreenShell eyebrow="Step 2" title="Fighter type" description="Choose whether the plan should bias grappling, striking, or hybrid MMA demands before loading weekly stress.">
+            <ScreenShell eyebrow="Крок 2" title="Бойовий профіль" description="Виберіть борцівський, ударний або змішаний профіль MMA, а потім укажіть тижневе навантаження.">
               <div className="grid gap-5">
                 <Card className="grid gap-4">
                   <SegmentedControl
-                    label="Sport"
+                    label="Вид спорту"
                     value={athleteProfile.sport}
                     onChange={(value) => updateAthleteProfile({ sport: value })}
-                    options={SPORTS.map((sport) => ({ label: sport, value: sport }))}
+                    options={SPORTS.map((sport) => ({ label: sportLabel(sport), value: sport }))}
                   />
                   <div className="grid gap-3 md:grid-cols-3">
                     {(Object.keys(PROFILE_COPY) as CombatProfile[]).map((profile) => {
@@ -1101,7 +1277,7 @@ export default function App() {
                         <button
                           key={profile}
                           type="button"
-                          aria-label={`Select combat profile: ${PROFILE_COPY[profile].title}`}
+                          aria-label={`Вибрати бойовий профіль: ${PROFILE_COPY[profile].title}`}
                           onClick={() => setCombatProfile(profile)}
                           className={`grid min-h-[180px] gap-3 rounded-lg border p-4 text-left transition ${
                             active
@@ -1131,13 +1307,13 @@ export default function App() {
                   </div>
                 </Card>
                 <Card className="grid gap-4">
-                  <h3 className="text-sm font-bold uppercase text-white">Weekly combat load</h3>
+                  <h3 className="text-sm font-bold uppercase text-white">Тижневе бойове навантаження</h3>
                   <div className="grid gap-4 md:grid-cols-5">
-                    <Input label="Striking" type="number" value={combatLoad.strikingSessions} onChange={(value) => updateCombatLoad("strikingSessions", value)} min={0} />
-                    <Input label="Grappling" type="number" value={combatLoad.grapplingSessions} onChange={(value) => updateCombatLoad("grapplingSessions", value)} min={0} />
-                    <Input label="Hard sparring" type="number" value={combatLoad.hardSparringDays} onChange={(value) => updateCombatLoad("hardSparringDays", value)} min={0} />
-                    <Input label="Hard wrestling" type="number" value={combatLoad.hardGrapplingDays} onChange={(value) => updateCombatLoad("hardGrapplingDays", value)} min={0} />
-                    <Input label="Technical" type="number" value={combatLoad.technicalSessions} onChange={(value) => updateCombatLoad("technicalSessions", value)} min={0} />
+                    <Input label="Ударні тренування" type="number" value={combatLoad.strikingSessions} onChange={(value) => updateCombatLoad("strikingSessions", value)} min={0} />
+                    <Input label="Борцівські тренування" type="number" value={combatLoad.grapplingSessions} onChange={(value) => updateCombatLoad("grapplingSessions", value)} min={0} />
+                    <Input label="Важкі спаринги" type="number" value={combatLoad.hardSparringDays} onChange={(value) => updateCombatLoad("hardSparringDays", value)} min={0} />
+                    <Input label="Важка боротьба" type="number" value={combatLoad.hardGrapplingDays} onChange={(value) => updateCombatLoad("hardGrapplingDays", value)} min={0} />
+                    <Input label="Технічні тренування" type="number" value={combatLoad.technicalSessions} onChange={(value) => updateCombatLoad("technicalSessions", value)} min={0} />
                   </div>
                   <p className="rounded-md border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] p-3 text-sm leading-6 text-[var(--bbp-text)]">
                     {profileSummary.title}: {profileSummary.summary}
@@ -1149,55 +1325,55 @@ export default function App() {
           )}
 
           {step === 3 && (
-            <ScreenShell eyebrow="Step 3" title="Athlete profile" description="Save stable data once: age, sex, training age, equipment, and injury flags. Tests and readiness stay editable each cycle.">
+            <ScreenShell eyebrow="Крок 3" title="Профіль спортсмена" description="Збережіть постійні дані: вік, стать, стаж, обладнання та обмеження. Тести й готовність можна змінювати в кожному циклі.">
               <div className="grid gap-5">
                 <Card className="grid gap-4 md:grid-cols-4">
-                  <Input label="Name" value={athleteProfile.name} onChange={(value) => updateAthleteProfile({ name: String(value) })} placeholder="Athlete name" />
-                  <Input label="Age" type="number" value={athleteProfile.age} onChange={(value) => updateAthleteProfile({ age: value as number | "" })} min={0} />
-                  <Input label="Height cm" type="number" value={athleteProfile.heightCm} onChange={(value) => updateAthleteProfile({ heightCm: value as number | "" })} min={0} />
-                  <Input label="Weight kg" type="number" value={athleteProfile.weightKg} onChange={(value) => updateAthleteProfile({ weightKg: value as number | "" })} min={0} />
+                  <Input label="Ім'я" value={athleteProfile.name} onChange={(value) => updateAthleteProfile({ name: String(value) })} placeholder="Ім'я спортсмена" />
+                  <Input label="Вік" type="number" value={athleteProfile.age} onChange={(value) => updateAthleteProfile({ age: value as number | "" })} min={0} />
+                  <Input label="Зріст, см" type="number" value={athleteProfile.heightCm} onChange={(value) => updateAthleteProfile({ heightCm: value as number | "" })} min={0} />
+                  <Input label="Вага, кг" type="number" value={athleteProfile.weightKg} onChange={(value) => updateAthleteProfile({ weightKg: value as number | "" })} min={0} />
                   <SegmentedControl
-                    label="Sex"
+                    label="Стать"
                     value={athleteProfile.sex}
                     onChange={(value) => updateAthleteProfile({ sex: value })}
                     options={[
-                      { label: "Male", value: "Male" },
-                      { label: "Female", value: "Female" },
+                      { label: "Чоловіча", value: "Male" },
+                      { label: "Жіноча", value: "Female" },
                     ]}
                   />
                   <SegmentedControl
-                    label="Level"
+                    label="Рівень"
                     value={athleteProfile.level}
                     onChange={(value) => updateAthleteProfile({ level: value })}
                     options={[
-                      { label: "Beginner", value: "Beginner" },
-                      { label: "Amateur", value: "Amateur" },
-                      { label: "Advanced", value: "Advanced Amateur" },
-                      { label: "Pro", value: "Professional" },
+                      { label: "Початківець", value: "Beginner" },
+                      { label: "Аматор", value: "Amateur" },
+                      { label: "Досвідчений", value: "Advanced Amateur" },
+                      { label: "Професіонал", value: "Professional" },
                     ]}
                   />
                   <SegmentedControl
-                    label="Strength training age"
+                    label="Стаж силових тренувань"
                     value={athleteProfile.strengthTrainingAge}
                     onChange={(value) => updateAthleteProfile({ strengthTrainingAge: value })}
                     options={[
-                      { label: "0-3 mo", value: "0-3 months" },
-                      { label: "3-12 mo", value: "3-12 months" },
-                      { label: "1-3 yr", value: "1-3 years" },
-                      { label: "3+ yr", value: "3+ years" },
+                      { label: "0-3 міс.", value: "0-3 months" },
+                      { label: "3-12 міс.", value: "3-12 months" },
+                      { label: "1-3 роки", value: "1-3 years" },
+                      { label: "3+ роки", value: "3+ years" },
                     ]}
                   />
                 </Card>
                 <SavedAthletesPanel athletes={savedAthletes} onLoad={loadAthleteProfile} onDelete={deleteAthleteProfile} />
                 <SavedProgramsPanel programs={savedPrograms} onLoad={loadProgramRecord} onDelete={deleteProgramRecord} />
-                <Checklist title="Equipment" items={EQUIPMENT} selected={athleteProfile.equipment} onToggle={(value) => toggleListValue("equipment", value)} />
-                <Checklist title="Pain / risk flags" items={PAIN_AREAS} selected={athleteProfile.painAreas} onToggle={(value) => toggleListValue("painAreas", value)} />
+                <Checklist title="Обладнання" items={EQUIPMENT} selected={athleteProfile.equipment} onToggle={(value) => toggleListValue("equipment", value)} />
+                <Checklist title="Біль та обмеження" items={PAIN_AREAS} selected={athleteProfile.painAreas} onToggle={(value) => toggleListValue("painAreas", value)} />
                 <Card className="border-[rgba(255,128,139,0.28)] bg-[rgba(255,128,139,0.08)] text-sm leading-6 text-[var(--bbp-text)]">
-                  This tool does not diagnose injuries. Acute pain, neurological symptoms, concussion signs, chest pain, or severe dizziness require qualified medical assessment.
+                  Цей інструмент не встановлює діагнозів. Гострий біль, неврологічні симптоми, ознаки струсу, біль у грудях або сильне запаморочення потребують огляду лікаря.
                 </Card>
                 <div className="flex flex-wrap justify-between gap-3">
                   <Button variant="outline" onClick={saveAthleteProfile}>
-                    Save athlete profile
+                    Зберегти спортсмена
                   </Button>
                   <NavigationButtons prev={prevStep} next={nextStep} />
                 </div>
@@ -1206,54 +1382,54 @@ export default function App() {
           )}
 
           {step === 4 && (
-            <ScreenShell eyebrow="Step 4" title="Training block" description="Pick duration, S&C frequency, session length, camp phase, and competition date. Every fourth week becomes checkpoint/deload.">
+            <ScreenShell eyebrow="Крок 4" title="Тренувальний блок" description="Виберіть тривалість, кількість силових тренувань, фазу підготовки й дату змагання. Кожен четвертий тиждень буде контрольним і розвантажувальним.">
               <div className="grid gap-5">
                 <Card className="grid gap-5">
                   <SegmentedControl
-                    label="Program length"
+                    label="Тривалість блоку"
                     value={String(programSettings.lengthWeeks)}
                     onChange={(value) => updateProgramSettings({ lengthWeeks: Number(value) as ProgramSettings["lengthWeeks"] })}
                     options={[
-                      { label: "4 Weeks", value: "4" },
-                      { label: "8 Weeks", value: "8" },
-                      { label: "12 Weeks", value: "12" },
+                      { label: "4 тижні", value: "4" },
+                      { label: "8 тижнів", value: "8" },
+                      { label: "12 тижнів", value: "12" },
                     ]}
                   />
                   <SegmentedControl
-                    label="S&C days per week"
+                    label="Силових тренувань на тиждень"
                     value={String(programSettings.scDaysPerWeek)}
                     onChange={(value) => updateProgramSettings({ scDaysPerWeek: Number(value) as ProgramSettings["scDaysPerWeek"] })}
                     options={[
-                      { label: "2 Days", value: "2" },
-                      { label: "3 Days", value: "3" },
-                      { label: "4 Days", value: "4" },
+                      { label: "2 дні", value: "2" },
+                      { label: "3 дні", value: "3" },
+                      { label: "4 дні", value: "4" },
                     ]}
                   />
                   <div className="grid gap-4 md:grid-cols-3">
                     <SegmentedControl
-                      label="Session duration"
+                      label="Тривалість тренування"
                       value={programSettings.sessionDuration}
                       onChange={(value) => updateProgramSettings({ sessionDuration: value })}
                       options={[
-                        { label: "45", value: "45 min" },
-                        { label: "60", value: "60 min" },
-                        { label: "75", value: "75 min" },
-                        { label: "90", value: "90 min" },
+                        { label: "45 хв", value: "45 min" },
+                        { label: "60 хв", value: "60 min" },
+                        { label: "75 хв", value: "75 min" },
+                        { label: "90 хв", value: "90 min" },
                       ]}
                     />
-                    <Input label="Competition date" type="date" value={programSettings.competitionDate || ""} onChange={(value) => updateProgramSettings({ competitionDate: String(value) })} />
-                    <Input label="Main goal" value={programSettings.mainGoal} onChange={(value) => updateProgramSettings({ mainGoal: String(value) })} />
+                    <Input label="Дата змагання" type="date" value={programSettings.competitionDate || ""} onChange={(value) => updateProgramSettings({ competitionDate: String(value) })} />
+                    <Input label="Головна мета" value={goalLabel(programSettings.mainGoal)} onChange={(value) => updateProgramSettings({ mainGoal: String(value) })} />
                   </div>
                   <SegmentedControl
-                    label="Current phase"
+                    label="Поточна фаза"
                     value={programSettings.phase}
                     onChange={(value) => updateProgramSettings({ phase: value })}
                     options={[
-                      { label: "Off-season", value: "Off-season" },
-                      { label: "Pre-camp", value: "Pre-camp" },
-                      { label: "Fight camp", value: "Fight camp" },
-                      { label: "In-season", value: "In-season" },
-                      { label: "Return", value: "Return to training" },
+                      { label: "Міжсезоння", value: "Off-season" },
+                      { label: "Перед зборами", value: "Pre-camp" },
+                      { label: "Бойові збори", value: "Fight camp" },
+                      { label: "Сезон", value: "In-season" },
+                      { label: "Повернення", value: "Return to training" },
                     ]}
                   />
                 </Card>
@@ -1263,7 +1439,7 @@ export default function App() {
           )}
 
           {step === 5 && (
-            <ScreenShell eyebrow="Step 5" title="Assessment" description="Enter tests, working weights, power markers, conditioning numbers, and readiness. The engine turns this into a practical weekly plan.">
+            <ScreenShell eyebrow="Крок 5" title="Оцінювання" description="Внесіть результати тестів, робочі ваги, показники потужності, витривалості й готовності. Система перетворить їх на практичний тижневий план.">
               <div className="grid gap-5">
                 <Card>
                   <AssessmentInputs assessment={assessment} setAssessment={setAssessment} />
@@ -1279,10 +1455,10 @@ export default function App() {
                 />
                 <div className="flex flex-wrap justify-between gap-3">
                   <Button variant="secondary" onClick={prevStep}>
-                    <ChevronLeft className="h-4 w-4" /> Back
+                    <ChevronLeft className="h-4 w-4" /> Назад
                   </Button>
                   <Button onClick={handleGenerate} className="px-8">
-                    Generate program
+                    Створити програму
                   </Button>
                 </div>
               </div>
@@ -1290,7 +1466,7 @@ export default function App() {
           )}
 
           {step === 6 && program && (
-            <ScreenShell eyebrow="Step 6" title="Training plan" description={program.summary}>
+            <ScreenShell eyebrow="Крок 6" title="План тренувань" description={programSummaryUa(combatProfile, athleteProfile, programSettings)}>
               <div className="grid gap-5">
                 <ProgramDashboard program={program} languageMode={languageMode} />
                 <GeminiPanel
@@ -1304,10 +1480,10 @@ export default function App() {
                 />
                 <div className="flex flex-wrap justify-between gap-3 border-t border-zinc-900 pt-5">
                   <Button variant="secondary" onClick={prevStep}>
-                    Back to assessment
+                    До оцінювання
                   </Button>
                   <Button onClick={nextStep}>
-                    Open final sheet <ChevronRight className="h-4 w-4" />
+                    Відкрити підсумкову таблицю <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -1315,7 +1491,7 @@ export default function App() {
           )}
 
           {step === 7 && program && (
-            <ScreenShell eyebrow="Step 7" title="Final sheet output" description="This is the structure the athlete or coach should receive as the final training document.">
+            <ScreenShell eyebrow="Крок 7" title="Підсумкова таблиця" description="Таку структуру спортсмен або тренер отримає як готовий тренувальний документ.">
               <div className="grid gap-5">
                 <SheetPreview
                   program={program}
@@ -1337,7 +1513,7 @@ export default function App() {
                 />
                 <div className="flex justify-center">
                   <Button variant="secondary" onClick={resetDemo}>
-                    Reset demo
+                    Почати спочатку
                   </Button>
                 </div>
               </div>
@@ -1346,7 +1522,7 @@ export default function App() {
         </main>
 
         <footer className="border-t border-zinc-900 py-4 text-center text-[10px] uppercase text-zinc-600">
-          <p>2026 Black Bear Performance. Built for fighters, coaches, and real training decisions.</p>
+          <p>2026 Black Bear. Для спортсменів, тренерів і зважених тренувальних рішень.</p>
         </footer>
       </div>
     </div>
@@ -1362,22 +1538,30 @@ function AccountPanel({
   syncStatus,
   onSyncNow,
   authActionLabel,
+  authMode,
+  setAuthMode,
+  loading,
+  error,
 }: {
-  account: UserAccount | null;
-  authForm: { name: string; email: string };
-  setAuthForm: React.Dispatch<React.SetStateAction<{ name: string; email: string }>>;
+  account: StoredAccount | null;
+  authForm: { name: string; email: string; password: string };
+  setAuthForm: React.Dispatch<React.SetStateAction<{ name: string; email: string; password: string }>>;
   onSubmit: () => void;
   onLogout: () => void;
   syncStatus: SyncStatus;
   onSyncNow: () => void;
   authActionLabel: string;
+  authMode: AuthMode;
+  setAuthMode: React.Dispatch<React.SetStateAction<AuthMode>>;
+  loading: boolean;
+  error: string;
 }) {
   const syncCopy: Record<SyncStatus, string> = {
-    local: "Saved on this device",
-    syncing: "Syncing",
-    synced: "Cloud synced",
-    offline: "Offline fallback",
-    error: "Sync issue",
+    local: "Збережено на пристрої",
+    syncing: "Синхронізація",
+    synced: "Синхронізовано",
+    offline: "Локальний режим",
+    error: "Помилка синхронізації",
   };
   const syncTone =
     syncStatus === "synced"
@@ -1390,23 +1574,23 @@ function AccountPanel({
     return (
       <div className="grid gap-3 rounded-lg border border-emerald-400/25 bg-[var(--bbp-success-soft)] p-4 md:grid-cols-[1fr_auto] md:items-center">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-200">Signed in</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-200">Вхід виконано</p>
           <p className="mt-1 font-bold text-white">{account.name}</p>
           <p className="text-xs text-[var(--bbp-muted)]">
-            {account.email} / {account.role}
+            {account.email} / {roleLabel(account.serverRole || account.role)}
           </p>
           <span className={`mt-2 inline-flex w-fit rounded border px-2 py-1 text-[10px] font-bold uppercase ${syncTone}`}>
-            Data: {syncCopy[syncStatus]}
+            Дані: {syncCopy[syncStatus]}
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
           {remoteSyncEnabled && (
             <Button variant="secondary" onClick={onSyncNow} disabled={syncStatus === "syncing"}>
-              Sync now
+              Синхронізувати
             </Button>
           )}
-          <Button variant="outline" onClick={onLogout}>
-            <LogOut className="h-4 w-4" /> Logout
+          <Button variant="outline" onClick={onLogout} disabled={loading}>
+            {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />} Вийти
           </Button>
         </div>
       </div>
@@ -1414,20 +1598,34 @@ function AccountPanel({
   }
 
   return (
-    <div className="grid gap-3 rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.78)] p-4">
+    <div className="grid gap-3 rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.78)] p-4" aria-busy={loading}>
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c7f4ff]">Account</p>
-        <p className="mt-1 text-sm leading-5 text-[var(--bbp-muted)]">Register or log in so athletes and logs stay attached to you.</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#c7f4ff]">Обліковий запис</p>
+        <p className="mt-1 text-sm leading-5 text-[var(--bbp-muted)]">Увійдіть або зареєструйтеся, щоб зберігати спортсменів і журнал.</p>
         <span className={`mt-2 inline-flex w-fit rounded border px-2 py-1 text-[10px] font-bold uppercase ${syncTone}`}>
-          Data: {syncCopy[syncStatus]}
+          Дані: {syncCopy[syncStatus]}
         </span>
       </div>
+      {remoteSyncEnabled && (
+        <SegmentedControl
+          label="Дія"
+          value={authMode}
+          disabled={loading}
+          onChange={(value) => setAuthMode(value as AuthMode)}
+          options={[
+            { label: "Вхід", value: "login" },
+            { label: "Реєстрація", value: "register" },
+          ]}
+        />
+      )}
       <div className="grid gap-3 md:grid-cols-2">
-        <Input label="Name" value={authForm.name} onChange={(value) => setAuthForm((current) => ({ ...current, name: String(value) }))} placeholder="Coach / athlete name" />
-        <Input label="Email" type="email" value={authForm.email} onChange={(value) => setAuthForm((current) => ({ ...current, email: String(value) }))} placeholder="email@example.com" />
+        {(!remoteSyncEnabled || authMode === "register") && <Input label="Ім'я" value={authForm.name} onChange={(value) => setAuthForm((current) => ({ ...current, name: String(value) }))} placeholder="Ім'я тренера або спортсмена" />}
+        <Input label="Електронна пошта" type="email" value={authForm.email} onChange={(value) => setAuthForm((current) => ({ ...current, email: String(value) }))} placeholder="email@example.com" />
+        {remoteSyncEnabled && <Input label="Пароль (10-128 символів)" type="password" value={authForm.password} onChange={(value) => setAuthForm((current) => ({ ...current, password: String(value) }))} placeholder="Введіть пароль" />}
       </div>
-      <Button onClick={onSubmit} className="w-full md:w-fit">
-        <UserPlus className="h-4 w-4" /> {authActionLabel}
+      {error && <p className="text-sm font-semibold text-[#ffd5da]" role="alert">{error}</p>}
+      <Button onClick={onSubmit} className="w-full md:w-fit" disabled={loading}>
+        {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} {loading ? "Зачекайте..." : authActionLabel}
       </Button>
     </div>
   );
@@ -1453,19 +1651,19 @@ function DataBackupPanel({
   return (
     <div className="grid gap-3 rounded-lg border border-zinc-800 bg-black/55 p-4">
       <div className="grid gap-1">
-        <p className="text-[11px] font-bold uppercase text-zinc-500">Local data backup</p>
+        <p className="text-[11px] font-bold uppercase text-zinc-500">Резервна копія даних</p>
         <p className="text-sm leading-5 text-zinc-400">
           {account
-            ? `${athletesCount} athletes / ${programsCount} programs / ${logsCount} logs saved for this account.`
-            : "Import a backup to restore an account, or log in to start a new local database."}
+            ? `Спортсменів: ${athletesCount} / програм: ${programsCount} / записів: ${logsCount}.`
+            : "Імпортуйте резервну копію або увійдіть, щоб створити локальну базу."}
         </p>
       </div>
       <div className="grid gap-2 md:grid-cols-2">
         <Button variant="secondary" onClick={onExport} disabled={!account}>
-          <Download className="h-4 w-4" /> Export backup
+          <Download className="h-4 w-4" /> Експортувати
         </Button>
         <label className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-zinc-800 px-4 py-2 text-sm font-bold text-white transition hover:bg-zinc-700">
-          <Upload className="h-4 w-4" /> Import backup
+          <Upload className="h-4 w-4" /> Імпортувати
           <input
             type="file"
             accept="application/json,.json"
@@ -1509,67 +1707,63 @@ function StartWorkbenchCard({
     <Card className="premium-reveal grid content-start gap-4 self-start border-zinc-700/80 lg:sticky lg:top-32">
       <div>
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold uppercase text-white">{account ? "Command center" : "Final output"}</h3>
-          <StatusPill tone={account ? "green" : "gold"} label={account ? "Ready" : "Demo"} />
+          <h3 className="text-sm font-bold uppercase text-white">{account ? "Робочий простір" : "Підсумковий документ"}</h3>
+          <StatusPill tone={account ? "green" : "gold"} label={account ? "Готово" : "Демо"} />
         </div>
         <p className="mt-2 text-sm leading-6 text-zinc-400">
           {account
-            ? "Continue from saved athletes, reopen generated plans, or start a new assessment block."
-            : "OTA-style Google Sheets structure with Black Bear combat-sport logic."}
+            ? "Продовжуйте роботу зі спортсменами, відкривайте програми або починайте нове оцінювання."
+            : "Структура Google Sheets у форматі OTA з логікою Black Bear для єдиноборств."}
         </p>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
-        <StatBox label="Athletes" value={String(athletesCount)} />
-        <StatBox label="Programs" value={String(programs.length)} />
-        <StatBox label="Logs" value={String(logs.length)} />
-      </div>
-      <div className="grid gap-2 text-sm leading-5 text-zinc-500">
-        <p>{programs.length ? "Start the latest training plan directly, or go to Athlete step for the full database." : "Create or load an athlete, then generate the first block."}</p>
-        <p>Outputs: 4, 8, or 12 weeks with notes, zones, checkpoints, readiness, CSV and Excel export.</p>
+        <StatBox label="Спортсмени" value={String(athletesCount)} />
+        <StatBox label="Програми" value={String(programs.length)} />
+        <StatBox label="Записи" value={String(logs.length)} />
       </div>
       <div className="grid gap-3 rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.68)] p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">Today</p>
-            <p className="mt-1 text-sm font-semibold text-white">{latestProgram ? `Open ${latestProgram.athleteName}'s latest block` : "Create first athlete plan"}</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[var(--bbp-muted-strong)]">Сьогодні</p>
+            <p className="mt-1 text-sm font-semibold text-white">{latestProgram ? `Відкрити останній блок: ${latestProgram.athleteName}` : "Створити першу програму"}</p>
           </div>
           <Clock3 className="h-4 w-4 text-[#c7f4ff]" />
         </div>
         <p className="text-xs leading-5 text-[var(--bbp-muted)]">
           {latestProgram
-            ? `${latestProgram.programSettings.lengthWeeks} weeks / ${latestProgram.programSettings.scDaysPerWeek} S&C days / ${latestProgram.programSettings.phase}`
-            : "Register, choose fighter type, add assessment numbers, then generate the first professional sheet."}
+            ? `${latestProgram.programSettings.lengthWeeks} тиж. / ${latestProgram.programSettings.scDaysPerWeek} силових тренувань / ${phaseLabel(latestProgram.programSettings.phase)}`
+            : "Зареєструйтеся, виберіть тип бійця, внесіть тести й сформуйте першу таблицю."}
         </p>
       </div>
       <div className="grid gap-3 rounded-lg border border-zinc-800 bg-zinc-950/80 p-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase text-zinc-500">Training signal</p>
-            <p className="mt-1 text-sm font-semibold text-white">{logs.length ? "Recent adherence and readiness" : "No diary data yet"}</p>
+            <p className="text-[11px] font-bold uppercase text-zinc-500">Стан тренувань</p>
+            <p className="mt-1 text-sm font-semibold text-white">{logs.length ? "Виконання й готовність" : "У журналі ще немає даних"}</p>
           </div>
           <BarChart3 className="h-4 w-4 text-emerald-200" />
         </div>
         <MiniBarChart values={readinessData} max={5} />
         <div className="grid grid-cols-4 gap-1 text-center text-[10px] font-bold uppercase text-zinc-500">
-          <span>Done {doneLogs}</span>
-          <span>Mod {modifiedLogs}</span>
-          <span>Plan {plannedLogs}</span>
-          <span>Skip {skippedLogs}</span>
+          <span>Виконано {doneLogs}</span>
+          <span>Змінено {modifiedLogs}</span>
+          <span>План {plannedLogs}</span>
+          <span>Пропущено {skippedLogs}</span>
         </div>
       </div>
       {recentPrograms.length > 0 && (
         <div className="grid gap-2">
-          <p className="text-[11px] font-bold uppercase text-zinc-500">Recent programs</p>
+          <p className="text-[11px] font-bold uppercase text-zinc-500">Останні програми</p>
           {recentPrograms.map((record) => (
             <div key={record.id} className="grid gap-2 rounded-lg border border-zinc-800 bg-black/55 p-3">
               <div>
                 <p className="font-bold text-white">{record.athleteName}</p>
                 <p className="text-xs text-zinc-500">
-                  {record.programSettings.lengthWeeks} weeks / {record.programSettings.scDaysPerWeek} days / {record.programSettings.phase}
+                  {record.programSettings.lengthWeeks} тиж. / {record.programSettings.scDaysPerWeek} дні / {phaseLabel(record.programSettings.phase)}
                 </p>
               </div>
               <Button variant="secondary" onClick={() => onOpenProgram(record)}>
-                Start training plan
+                Відкрити програму
               </Button>
             </div>
           ))}
@@ -1577,14 +1771,14 @@ function StartWorkbenchCard({
       )}
       {recentLogs.length > 0 && (
         <div className="grid gap-2">
-          <p className="text-[11px] font-bold uppercase text-zinc-500">Recent logs</p>
+          <p className="text-[11px] font-bold uppercase text-zinc-500">Останні записи</p>
           {recentLogs.map((log) => (
             <div key={log.id} className="rounded-lg border border-zinc-800 bg-black/55 p-3 text-xs leading-5 text-zinc-400">
               <p className="font-semibold text-white">
                 {log.athleteName} / {log.date}
               </p>
               <p>
-                Week {log.week}, {log.day}, readiness {log.readiness}/5, {log.status}
+                Тиждень {log.week}, {log.day}, готовність {log.readiness}/5, {logStatusLabel(log.status)}
               </p>
             </div>
           ))}
@@ -1614,32 +1808,6 @@ function StatusPill({ label, tone = "zinc" }: { label: string; tone?: "gold" | "
   return <span className={`inline-flex w-fit items-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] ${tones[tone]}`}>{label}</span>;
 }
 
-function PremiumWorkflow() {
-  const items = [
-    { icon: User, title: "Profile", copy: "Stable fighter data: sport, age, sex, equipment, pain flags." },
-    { icon: BarChart3, title: "Assess", copy: "Strength, power, MAS, HR zones, readiness, checkpoint tests." },
-    { icon: Flame, title: "Program", copy: "4-12 week plan with warm-up, strength, power, conditioning, mobility." },
-    { icon: CheckCircle2, title: "Track", copy: "Athlete diary, coach overview, saved plans, export-ready sheet." },
-  ];
-
-  return (
-    <div className="grid gap-3 md:grid-cols-4">
-      {items.map((item) => {
-        const Icon = item.icon;
-        return (
-          <div key={item.title} className="group rounded-lg border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.025)] p-3 transition hover:border-[var(--bbp-border-strong)] hover:bg-[rgba(255,255,255,0.04)]">
-            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] text-[#dff8ff] transition group-hover:border-[var(--bbp-border-strong)]">
-              <Icon className="h-4 w-4" />
-            </div>
-            <p className="text-xs font-black uppercase text-white">{item.title}</p>
-            <p className="mt-2 text-xs leading-5 text-[var(--bbp-muted)]">{item.copy}</p>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 function MiniBarChart({ values, max }: { values: number[]; max: number }) {
   return (
     <div className="flex h-20 items-end gap-1 rounded-md border border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] p-2">
@@ -1650,7 +1818,7 @@ function MiniBarChart({ values, max }: { values: number[]; max: number }) {
             <div
               className="w-full rounded-t bg-gradient-to-t from-[#6de0c0] via-[#67cfff] to-[#dff8ff] shadow-[0_0_18px_rgba(84,200,255,0.15)]"
               style={{ height: `${height}%` }}
-              aria-label={`Readiness ${value} of ${max}`}
+              aria-label={`Готовність: ${value} з ${max}`}
             />
           </div>
         );
@@ -1687,22 +1855,22 @@ function AdminPanel({
   return (
     <Card className="grid gap-4">
       <div>
-        <h3 className="text-sm font-bold uppercase text-white">Admin overview</h3>
-        <p className="mt-1 text-xs leading-5 text-zinc-500">Local MVP control view for accounts, saved data, and system checks.</p>
+        <h3 className="text-sm font-bold uppercase text-white">Огляд адміністратора</h3>
+        <p className="mt-1 text-xs leading-5 text-zinc-500">Облікові записи, збережені дані та стан локальної системи.</p>
       </div>
       <div className="grid grid-cols-2 gap-2 text-center md:grid-cols-5">
-        <StatBox label="Accounts" value={String(accounts.length)} />
-        <StatBox label="Athletes" value={String(athletesCount)} />
-        <StatBox label="Programs" value={String(programsCount)} />
-        <StatBox label="Logs" value={String(logsCount)} />
-        <StatBox label="Teams" value={String(teamsCount)} />
+        <StatBox label="Облікові записи" value={String(accounts.length)} />
+        <StatBox label="Спортсмени" value={String(athletesCount)} />
+        <StatBox label="Програми" value={String(programsCount)} />
+        <StatBox label="Журнал" value={String(logsCount)} />
+        <StatBox label="Команди" value={String(teamsCount)} />
       </div>
       <div className="grid gap-2 text-xs text-zinc-400">
         {accounts.slice(0, 6).map((item) => (
           <div key={item.id} className="grid gap-1 rounded-lg border border-zinc-900 bg-black/55 p-3 md:grid-cols-[1fr_auto]">
             <span className="font-semibold text-white">{item.name}</span>
             <span>
-              {item.email} / {item.role}
+              {item.email} / {roleLabel(item.role)}
             </span>
           </div>
         ))}
@@ -1724,6 +1892,7 @@ function TeamPortalPanel({
   setDraft,
   onCreateTeam,
   onJoinTeam,
+  joinLoading,
   onLoadTestEntry,
 }: {
   account: UserAccount | null;
@@ -1738,6 +1907,7 @@ function TeamPortalPanel({
   setDraft: React.Dispatch<React.SetStateAction<{ name: string; joinCode: string }>>;
   onCreateTeam: () => void;
   onJoinTeam: () => void;
+  joinLoading: boolean;
   onLoadTestEntry: (entry: TestHistoryEntry) => void;
 }) {
   const today = new Date().toISOString().slice(0, 10);
@@ -1752,27 +1922,27 @@ function TeamPortalPanel({
     <Card className="grid gap-4">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h3 className="text-sm font-bold uppercase text-white">{userMode === "coach" ? "Coach dashboard" : "Athlete dashboard"}</h3>
-          <StatusPill tone={account ? "green" : "zinc"} label={account ? "Data saved" : "Login required"} />
+          <h3 className="text-sm font-bold uppercase text-white">{userMode === "coach" ? "Панель тренера" : "Панель спортсмена"}</h3>
+          <StatusPill tone={account ? "green" : "zinc"} label={account ? "Дані збережено" : "Потрібен вхід"} />
         </div>
         <p className="mt-1 text-xs leading-5 text-zinc-500">
           {userMode === "coach"
-            ? "Create a team, share the join code, then watch athlete diary entries and checkpoint tests."
-            : "Join your coach team and fill the plan diary from training instead of paper."}
+            ? "Створіть команду, надайте код і переглядайте журнали спортсменів та контрольні тести."
+            : "Приєднайтеся до команди тренера й ведіть електронний журнал тренувань."}
         </p>
       </div>
       <div className="grid gap-2 md:grid-cols-3">
-        <DashboardMetric icon={<Users className="h-4 w-4" />} label={userMode === "coach" ? "Athletes linked" : "Teams joined"} value={String(totalCoachAthletes)} />
-        <DashboardMetric icon={<CheckCircle2 className="h-4 w-4" />} label="Today check-ins" value={String(checkedInToday)} />
-        <DashboardMetric icon={<CalendarDays className="h-4 w-4" />} label="Checkpoint tests" value={String(testsSaved)} />
+        <DashboardMetric icon={<Users className="h-4 w-4" />} label={userMode === "coach" ? "Спортсмени" : "Команди"} value={String(totalCoachAthletes)} />
+        <DashboardMetric icon={<CheckCircle2 className="h-4 w-4" />} label="Записи за сьогодні" value={String(checkedInToday)} />
+        <DashboardMetric icon={<CalendarDays className="h-4 w-4" />} label="Контрольні тести" value={String(testsSaved)} />
       </div>
 
       {userMode === "coach" ? (
         <div className="grid gap-3">
           <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-            <Input label="Team name" value={draft.name} onChange={(value) => setDraft((current) => ({ ...current, name: String(value) }))} />
+            <Input label="Назва команди" value={draft.name} onChange={(value) => setDraft((current) => ({ ...current, name: String(value) }))} />
             <Button onClick={onCreateTeam} disabled={!account}>
-              Create team
+              Створити команду
             </Button>
           </div>
           {teams.length > 0 && (
@@ -1784,9 +1954,9 @@ function TeamPortalPanel({
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="font-bold text-white">{team.name}</p>
-                        <p className="text-xs text-zinc-500">Join code: {team.joinCode}</p>
+                        <p className="text-xs text-zinc-500">Код приєднання: {team.joinCode}</p>
                       </div>
-                      <span className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-400">{teamMembers.length} athletes</span>
+                      <span className="rounded border border-zinc-800 bg-zinc-950 px-2 py-1 text-xs text-zinc-400">Спортсменів: {teamMembers.length}</span>
                     </div>
                     {teamMembers.length > 0 && (
                       <div className="grid gap-2">
@@ -1800,16 +1970,16 @@ function TeamPortalPanel({
                                 <p className="text-zinc-500">{membership.athleteEmail}</p>
                               </div>
                               <div className="text-zinc-400">
-                                <p>Today: {log ? `${log.status}, readiness ${log.readiness}/5${log.sessionRpe ? `, RPE ${log.sessionRpe}/10` : ""}` : "no diary yet"}</p>
+                                <p>Сьогодні: {log ? `${logStatusLabel(log.status)}, готовність ${log.readiness}/5${log.sessionRpe ? `, RPE ${log.sessionRpe}/10` : ""}` : "записів ще немає"}</p>
                                 <p>
-                                  Last test:{" "}
+                                  Останній тест:{" "}
                                   {latestTest
-                                    ? `${latestTest.date}, ${latestTest.microcycle}, jump ${latestTest.verticalJump || "-"}`
-                                    : "no checkpoint yet"}
+                                    ? `${latestTest.date}, ${latestTest.microcycle}, вертикальний стрибок ${latestTest.verticalJump || "-"}`
+                                    : "контрольного тесту ще немає"}
                                 </p>
                               </div>
                               <Button variant="secondary" onClick={() => latestTest && onLoadTestEntry(latestTest)} disabled={!latestTest}>
-                                Use test numbers
+                                Підставити результати
                               </Button>
                             </div>
                           );
@@ -1825,9 +1995,10 @@ function TeamPortalPanel({
       ) : (
         <div className="grid gap-3">
           <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-            <Input label="Coach join code" value={draft.joinCode} onChange={(value) => setDraft((current) => ({ ...current, joinCode: String(value).toUpperCase() }))} placeholder="TEAM-1234" />
-            <Button onClick={onJoinTeam} disabled={!account}>
-              Join team
+            <Input label="Код команди тренера" value={draft.joinCode} onChange={(value) => setDraft((current) => ({ ...current, joinCode: String(value).toUpperCase() }))} placeholder="BB-1234" />
+            <Button onClick={onJoinTeam} disabled={!account || joinLoading}>
+              {joinLoading && <LoaderCircle className="h-4 w-4 animate-spin" />}
+              {joinLoading ? "Приєднання..." : "Приєднатися"}
             </Button>
           </div>
           {athleteMemberships.length > 0 && (
@@ -1836,7 +2007,7 @@ function TeamPortalPanel({
                 const team = allTeams.find((item) => item.id === membership.teamId);
                 return (
                   <div key={membership.id} className="rounded-lg border border-emerald-900/60 bg-emerald-950/15 p-3">
-                    Connected to {team?.name || "Coach team"} as <span className="font-semibold text-white">{membership.athleteName}</span>
+                    Приєднано до команди «{team?.name || "Команда тренера"}» як <span className="font-semibold text-white">{membership.athleteName}</span>
                   </div>
                 );
               })}
@@ -1872,27 +2043,27 @@ function GeminiPanel({
           <Sparkles className="h-4 w-4" />
         </div>
         <div>
-          <h3 className="text-sm font-bold uppercase text-white">Gemini coach check</h3>
+          <h3 className="text-sm font-bold uppercase text-white">Перевірка плану через Gemini</h3>
           <p className="mt-1 text-xs leading-5 text-[var(--bbp-muted)]">
-            Backend-only AI helper. The structured OTA-style sheet remains the source of truth.
+            Помічник працює лише на сервері. Структурована таблиця у форматі OTA залишається основою програми.
           </p>
         </div>
       </div>
       <label className="grid gap-1.5">
-        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted-strong)]">Question</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted-strong)]">Запитання</span>
         <textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           maxLength={1200}
-          placeholder="Ask for coach notes, risk flags, or a plain-language athlete explanation."
+          placeholder="Запитайте про примітки тренера, ризики або просте пояснення для спортсмена."
           className="min-h-24 rounded-md border border-[var(--bbp-border)] bg-[rgba(7,11,15,0.9)] px-3 py-2 text-sm text-[var(--bbp-text)] outline-none transition placeholder:text-[var(--bbp-muted-strong)] focus:border-[var(--bbp-accent-strong)] focus:ring-2 focus:ring-[var(--bbp-accent-ring)]"
         />
       </label>
       <div className="flex flex-wrap items-center gap-3">
         <Button onClick={onAsk} disabled={!account || loading}>
-          {loading ? "Asking..." : "Ask Gemini"} <Send className="h-4 w-4" />
+          {loading ? "Надсилання..." : "Запитати Gemini"} <Send className="h-4 w-4" />
         </Button>
-        <p className="text-xs text-[var(--bbp-muted-strong)]">{account ? "Uses server GEMINI_API_KEY with rate limit." : "Log in to use AI."}</p>
+        <p className="text-xs text-[var(--bbp-muted-strong)]">{account ? "Запити обмежені лімітом на сервері." : "Увійдіть, щоб користуватися помічником."}</p>
       </div>
       {error && <p className="rounded-lg border border-red-900 bg-red-950/40 p-3 text-sm text-red-200">{error}</p>}
       {response && <div className="whitespace-pre-wrap rounded-lg border border-[var(--bbp-border)] bg-[rgba(7,10,14,0.78)] p-4 text-sm leading-6 text-[var(--bbp-text)]">{response}</div>}
@@ -1923,26 +2094,26 @@ function TestHistoryPanel({
   return (
     <Card className="grid gap-4">
       <div>
-        <h3 className="text-sm font-bold uppercase text-white">Microcycle test history</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Історія тестів мікроциклу</h3>
         <p className="mt-1 text-xs leading-5 text-zinc-500">
-          Save checkpoint numbers after a microcycle. The coach can track progress without rewriting the athlete profile.
+          Зберігайте контрольні показники після мікроциклу, щоб тренер бачив прогрес без повторного заповнення профілю.
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-[160px_1fr_1fr_auto]">
-        <Input label="Date" type="date" value={draft.date} onChange={(value) => setDraft((current) => ({ ...current, date: String(value) }))} />
-        <Input label="Microcycle" value={draft.microcycle} onChange={(value) => setDraft((current) => ({ ...current, microcycle: String(value) }))} />
-        <Input label="Notes" value={draft.notes} onChange={(value) => setDraft((current) => ({ ...current, notes: String(value) }))} placeholder="Fresh / tired / after sparring" />
+        <Input label="Дата" type="date" value={draft.date} onChange={(value) => setDraft((current) => ({ ...current, date: String(value) }))} />
+        <Input label="Мікроцикл" value={draft.microcycle} onChange={(value) => setDraft((current) => ({ ...current, microcycle: String(value) }))} />
+        <Input label="Примітки" value={draft.notes} onChange={(value) => setDraft((current) => ({ ...current, notes: String(value) }))} placeholder="Бадьорий / втомлений / після спарингу" />
         <Button onClick={onSave} disabled={!account || !athleteName.trim()}>
-          Save checkpoint
+          Зберегти тест
         </Button>
       </div>
       {latest && (
         <div className="grid gap-2 rounded-lg border border-emerald-900/60 bg-emerald-950/15 p-3 text-xs text-zinc-300 md:grid-cols-4">
           <p>
-            Latest: <span className="font-semibold text-white">{latest.date}</span>
+            Останній: <span className="font-semibold text-white">{latest.date}</span>
           </p>
-          <p>Pullups: {latest.pullups || "-"}</p>
-          <p>Broad jump: {latest.broadJump || "-"} {broadJumpDelta !== null ? `(${broadJumpDelta >= 0 ? "+" : ""}${broadJumpDelta})` : ""}</p>
+          <p>Підтягування: {latest.pullups || "-"}</p>
+          <p>Стрибок у довжину: {latest.broadJump || "-"} {broadJumpDelta !== null ? `(${broadJumpDelta >= 0 ? "+" : ""}${broadJumpDelta})` : ""}</p>
           <p>MAS: {latest.mas || "-"}</p>
         </div>
       )}
@@ -1952,9 +2123,9 @@ function TestHistoryPanel({
             <div key={entry.id} className="grid gap-1 rounded-lg border border-zinc-800 bg-black/55 p-3 text-xs md:grid-cols-[130px_1fr_1fr]">
               <p className="font-semibold text-white">{entry.date}</p>
               <p className="text-zinc-400">
-                {entry.microcycle}: SQ/TB {entry.squatOrTrapBar || "-"}, push {entry.benchOrPushups || "-"}, pullups {entry.pullups || "-"}
+                {entry.microcycle}: присідання / Trap Bar {entry.squatOrTrapBar || "-"}, жим {entry.benchOrPushups || "-"}, підтягування {entry.pullups || "-"}
               </p>
-              <p className="text-zinc-500">{entry.notes || "No notes"}</p>
+              <p className="text-zinc-500">{entry.notes || "Без приміток"}</p>
             </div>
           ))}
         </div>
@@ -1981,47 +2152,47 @@ function TrainingLogPanel({
   return (
     <Card className="grid gap-4">
       <div className="grid gap-1">
-        <h3 className="text-sm font-bold uppercase text-white">Training log</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Журнал тренувань</h3>
         <p className="text-sm leading-6 text-zinc-500">
-          {account ? `Logs are saved for ${athleteName || "current athlete"} under ${account.name}.` : "Log in to save training history."}
+          {account ? `Журнал спортсмена ${athleteName || "без імені"} зберігається в обліковому записі ${account.name}.` : "Увійдіть, щоб зберігати історію тренувань."}
         </p>
       </div>
       <div className="grid gap-3 md:grid-cols-5">
-        <Input label="Date" type="date" value={draft.date} onChange={(value) => setDraft((current) => ({ ...current, date: String(value) }))} />
-        <Input label="Week" type="number" value={draft.week} min={1} max={12} onChange={(value) => setDraft((current) => ({ ...current, week: String(value) }))} />
-        <Input label="Day" value={draft.day} onChange={(value) => setDraft((current) => ({ ...current, day: String(value) }))} />
-        <Input label="Readiness" type="number" value={draft.readiness} min={1} max={5} onChange={(value) => setDraft((current) => ({ ...current, readiness: String(value) }))} />
+        <Input label="Дата" type="date" value={draft.date} onChange={(value) => setDraft((current) => ({ ...current, date: String(value) }))} />
+        <Input label="Тиждень" type="number" value={draft.week} min={1} max={12} onChange={(value) => setDraft((current) => ({ ...current, week: String(value) }))} />
+        <Input label="День" value={draft.day} onChange={(value) => setDraft((current) => ({ ...current, day: String(value) }))} />
+        <Input label="Готовність" type="number" value={draft.readiness} min={1} max={5} onChange={(value) => setDraft((current) => ({ ...current, readiness: String(value) }))} />
         <SegmentedControl
-          label="Status"
+          label="Статус"
           value={draft.status}
           onChange={(value) => setDraft((current) => ({ ...current, status: value as TrainingLogStatus }))}
           options={[
-            { label: "Done", value: "done" },
-            { label: "Modified", value: "modified" },
-            { label: "Skipped", value: "skipped" },
-            { label: "Planned", value: "planned" },
+            { label: "Виконано", value: "done" },
+            { label: "Змінено", value: "modified" },
+            { label: "Пропущено", value: "skipped" },
+            { label: "Заплановано", value: "planned" },
           ]}
         />
       </div>
       <div className="grid gap-3 md:grid-cols-3">
-        <Input label="Session RPE" type="number" value={draft.sessionRpe} min={1} max={10} onChange={(value) => setDraft((current) => ({ ...current, sessionRpe: String(value) }))} />
-        <Input label="Body weight kg" type="number" value={draft.bodyWeightKg} min={30} max={180} onChange={(value) => setDraft((current) => ({ ...current, bodyWeightKg: String(value) }))} />
-        <Input label="Pain / restriction" value={draft.painNote} onChange={(value) => setDraft((current) => ({ ...current, painNote: String(value) }))} placeholder="Shoulder tight / knee OK / none" />
+        <Input label="RPE тренування" type="number" value={draft.sessionRpe} min={1} max={10} onChange={(value) => setDraft((current) => ({ ...current, sessionRpe: String(value) }))} />
+        <Input label="Вага тіла, кг" type="number" value={draft.bodyWeightKg} min={30} max={180} onChange={(value) => setDraft((current) => ({ ...current, bodyWeightKg: String(value) }))} />
+        <Input label="Біль або обмеження" value={draft.painNote} onChange={(value) => setDraft((current) => ({ ...current, painNote: String(value) }))} placeholder="Напружене плече / коліно без болю / немає" />
       </div>
       <label className="grid gap-1.5">
-        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted-strong)]">Training diary</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--bbp-muted-strong)]">Щоденник тренування</span>
         <textarea
           value={draft.notes}
           onChange={(event) => setDraft((current) => ({ ...current, notes: event.target.value }))}
-          placeholder="What was done, what changed, how athlete felt, what coach should adjust"
+          placeholder="Що виконано, що змінилося, яке було самопочуття та що тренеру скоригувати"
           className="min-h-24 rounded-md border border-[var(--bbp-border)] bg-[rgba(7,11,15,0.9)] px-3 py-2 text-sm text-[var(--bbp-text)] outline-none transition placeholder:text-[var(--bbp-muted-strong)] focus:border-[var(--bbp-accent-strong)] focus:ring-2 focus:ring-[var(--bbp-accent-ring)]"
         />
       </label>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button onClick={onSave} disabled={!account || !athleteName.trim()}>
-          Save training log
+          Зберегти запис
         </Button>
-        <p className="text-xs text-zinc-600">{logs.length} saved logs for this athlete</p>
+        <p className="text-xs text-zinc-600">Збережених записів: {logs.length}</p>
       </div>
       {logs.length > 0 && (
         <div className="grid gap-2">
@@ -2029,13 +2200,13 @@ function TrainingLogPanel({
             <div key={log.id} className="grid gap-1 rounded-lg border border-zinc-800 bg-black/55 p-3 text-sm md:grid-cols-[120px_1fr_auto] md:items-center">
               <p className="font-semibold text-white">{log.date}</p>
               <p className="text-zinc-400">
-                Week {log.week} / {log.day} / readiness {log.readiness}/5
+                Тиждень {log.week} / {log.day} / готовність {log.readiness}/5
                 {log.sessionRpe ? ` / RPE ${log.sessionRpe}/10` : ""}
-                {log.bodyWeightKg ? ` / BW ${log.bodyWeightKg}kg` : ""}
-                {log.painNote ? ` / pain: ${log.painNote}` : ""}
+                {log.bodyWeightKg ? ` / вага ${log.bodyWeightKg} кг` : ""}
+                {log.painNote ? ` / біль: ${log.painNote}` : ""}
                 {log.notes ? ` - ${log.notes}` : ""}
               </p>
-              <span className="text-xs font-bold uppercase text-zinc-500">{log.status}</span>
+              <span className="text-xs font-bold uppercase text-zinc-500">{logStatusLabel(log.status)}</span>
             </div>
           ))}
         </div>
@@ -2049,7 +2220,7 @@ function ErrorList({ errors }: { errors: string[] }) {
 
   return (
     <div className="mb-5 rounded-lg border border-red-900 bg-red-950/40 p-4">
-      <p className="text-sm font-bold uppercase text-red-200">Check the input</p>
+      <p className="text-sm font-bold uppercase text-red-200">Перевірте введені дані</p>
       <ul className="mt-2 grid gap-1 text-sm text-red-100">
         {errors.map((error) => (
           <li key={error}>- {error}</li>
@@ -2076,12 +2247,12 @@ function CurrentSummary({
 }) {
   return (
     <div className="mb-5 grid gap-2 rounded-lg border border-[var(--bbp-border)] bg-[rgba(8,12,16,0.72)] p-3 text-xs shadow-[0_10px_30px_rgba(0,0,0,0.18)] md:grid-cols-6">
-      <SummaryItem label="Account" value={account ? account.name : "Not signed in"} />
-      <SummaryItem label="Mode" value={`${userMode} / ${languageMode.toUpperCase().replace("_", "+")}`} />
-      <SummaryItem label="Fighter" value={athleteProfile.name || "Not set"} />
-      <SummaryItem label="Profile" value={PROFILE_COPY[combatProfile].title} />
-      <SummaryItem label="Sport" value={athleteProfile.sport} />
-      <SummaryItem label="Output" value={`${programSettings.lengthWeeks} wk / ${programSettings.scDaysPerWeek} days`} />
+      <SummaryItem label="Обліковий запис" value={account ? account.name : "Вхід не виконано"} />
+      <SummaryItem label="Режим" value={`${roleLabel(userMode)} / ${languageLabel(languageMode)}`} />
+      <SummaryItem label="Спортсмен" value={athleteProfile.name || "Не вказано"} />
+      <SummaryItem label="Профіль" value={PROFILE_COPY[combatProfile].title} />
+      <SummaryItem label="Вид спорту" value={sportLabel(athleteProfile.sport)} />
+      <SummaryItem label="Результат" value={`${programSettings.lengthWeeks} тиж. / ${programSettings.scDaysPerWeek} дні`} />
     </div>
   );
 }
@@ -2102,20 +2273,20 @@ function NextActionBar({
   logsCount: number;
 }) {
   const actions = [
-    "Log in, choose role and language, then continue.",
-    "Pick the fighter type before loading sport stress.",
-    "Save stable athlete data once so future blocks are faster.",
-    "Choose block length, weekly S&C days and competition context.",
-    "Enter tests and readiness; then generate the plan.",
-    "Review next session, week density, risks and coach notes.",
-    "Export the sheet and save the athlete diary after training.",
+    "Увійдіть, виберіть роль і мову матеріалів.",
+    "Виберіть тип бійця та вкажіть бойове навантаження.",
+    "Збережіть постійні дані спортсмена для майбутніх блоків.",
+    "Виберіть тривалість блоку, силові дні та змагальний контекст.",
+    "Внесіть тести й готовність, а потім створіть програму.",
+    "Перегляньте наступне тренування, ризики та примітки тренера.",
+    "Експортуйте таблицю й заповніть журнал після тренування.",
   ];
   const label = actions[step - 1] || actions[0];
   const detail = program
-    ? `${program.weeks.length} weeks ready / ${logsCount} logs saved`
+    ? `Готових тижнів: ${program.weeks.length} / записів: ${logsCount}`
     : account
-      ? `${savedProgramsCount} saved programs / ${athleteProfile.name || "athlete not set"}`
-      : "No account yet";
+      ? `Збережено програм: ${savedProgramsCount} / ${athleteProfile.name || "спортсмена не вказано"}`
+      : "Облікового запису ще немає";
 
   return (
     <div className="mb-5 grid gap-3 rounded-lg border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] p-3 md:grid-cols-[auto_1fr_auto] md:items-center">
@@ -2123,7 +2294,7 @@ function NextActionBar({
         <Target className="h-5 w-5" />
       </div>
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#dff8ff]">Next best action</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#dff8ff]">Наступна дія</p>
         <p className="mt-1 text-sm font-semibold text-white">{label}</p>
       </div>
       <StatusPill tone={program ? "green" : account ? "gold" : "zinc"} label={detail} />
@@ -2150,18 +2321,18 @@ function PriorityPanel({
   return (
     <Card className="grid gap-3">
       <div>
-        <h3 className="text-sm font-bold uppercase text-white">Priority score</h3>
-        <p className="mt-1 text-xs leading-5 text-zinc-500">Top items the current cycle should respect. This is guidance, not a medical diagnosis.</p>
+        <h3 className="text-sm font-bold uppercase text-white">Оцінка пріоритетів</h3>
+        <p className="mt-1 text-xs leading-5 text-zinc-500">Головні чинники поточного циклу. Це рекомендації, а не медичний діагноз.</p>
       </div>
       <div className="grid gap-3 md:grid-cols-4">
         {scores.map((score) => (
           <div key={score.id} className="rounded-lg border border-zinc-800 bg-black/55 p-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-bold uppercase text-white">{score.label}</p>
+              <p className="text-xs font-bold uppercase text-white">{priorityLabel(score.id, score.label)}</p>
               <span className="rounded border border-[var(--bbp-border-strong)] bg-[var(--bbp-accent-soft)] px-2 py-1 text-xs font-black text-[#e7fbff]">{score.score}/5</span>
             </div>
             <p className="mt-2 text-xs leading-5 text-[var(--bbp-muted)]">
-              {languageMode !== "en" && score.reasonUa}
+              {languageMode !== "en" && priorityReasonUa(score.id, score.reasonUa)}
               {languageMode === "ua_en" ? " / " : ""}
               {languageMode !== "ua" && score.reasonEn}
             </p>
@@ -2184,8 +2355,8 @@ function SavedAthletesPanel({
   if (!athletes.length) {
     return (
       <Card className="grid gap-2">
-        <h3 className="text-sm font-bold uppercase text-white">Saved athletes</h3>
-        <p className="text-sm text-zinc-500">No saved athlete profiles yet. Save stable data once: combat profile, sport, age, sex, equipment, and injury flags.</p>
+        <h3 className="text-sm font-bold uppercase text-white">Збережені спортсмени</h3>
+        <p className="text-sm text-zinc-500">Збережених профілів ще немає. Один раз внесіть бойовий профіль, вид спорту, вік, стать, обладнання та обмеження.</p>
       </Card>
     );
   }
@@ -2193,8 +2364,8 @@ function SavedAthletesPanel({
   return (
     <Card className="grid gap-3">
       <div>
-        <h3 className="text-sm font-bold uppercase text-white">Saved athletes</h3>
-        <p className="mt-1 text-xs text-zinc-500">Stable profile data is saved locally. Assessment and readiness stay editable for each training cycle.</p>
+        <h3 className="text-sm font-bold uppercase text-white">Збережені спортсмени</h3>
+        <p className="mt-1 text-xs text-zinc-500">Профілі зберігаються локально. Оцінювання й готовність можна змінювати для кожного циклу.</p>
       </div>
       <div className="grid gap-2 md:grid-cols-2">
         {athletes.map((saved) => (
@@ -2202,18 +2373,18 @@ function SavedAthletesPanel({
             <div>
               <p className="font-bold text-white">{saved.athleteProfile.name}</p>
               <p className="text-xs text-zinc-500">
-                {PROFILE_COPY[saved.combatProfile].title} / {saved.athleteProfile.sport} / {saved.athleteProfile.age || "-"} y / {saved.athleteProfile.sex}
+                {PROFILE_COPY[saved.combatProfile].title} / {sportLabel(saved.athleteProfile.sport)} / {saved.athleteProfile.age || "-"} р. / {sexLabel(saved.athleteProfile.sex)}
               </p>
               <p className="mt-1 text-xs text-zinc-600">
-                Risks: {saved.athleteProfile.painAreas.length ? saved.athleteProfile.painAreas.join(", ") : "none"}
+                Обмеження: {saved.athleteProfile.painAreas.length ? saved.athleteProfile.painAreas.map(checklistItemLabel).join(", ") : "немає"}
               </p>
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => onLoad(saved)}>
-                Load
+                Завантажити
               </Button>
               <Button variant="outline" onClick={() => onDelete(saved.id)}>
-                Delete
+                Видалити
               </Button>
             </div>
           </div>
@@ -2235,8 +2406,8 @@ function SavedProgramsPanel({
   if (!programs.length) {
     return (
       <Card className="grid gap-2">
-        <h3 className="text-sm font-bold uppercase text-white">Program history</h3>
-        <p className="text-sm text-zinc-500">Generated programs will be saved here, so a coach can reopen the last plan instead of rebuilding it.</p>
+        <h3 className="text-sm font-bold uppercase text-white">Історія програм</h3>
+        <p className="text-sm text-zinc-500">Створені програми з'являться тут, щоб тренер міг відкрити останній план без повторного налаштування.</p>
       </Card>
     );
   }
@@ -2244,8 +2415,8 @@ function SavedProgramsPanel({
   return (
     <Card className="grid gap-3">
       <div>
-        <h3 className="text-sm font-bold uppercase text-white">Program history</h3>
-        <p className="mt-1 text-xs text-zinc-500">Open a previous plan with its original tests, settings, and generated weeks.</p>
+        <h3 className="text-sm font-bold uppercase text-white">Історія програм</h3>
+        <p className="mt-1 text-xs text-zinc-500">Відкрийте попередній план із початковими тестами, параметрами та тижнями.</p>
       </div>
       <div className="grid gap-2">
         {programs.slice(0, 8).map((record) => (
@@ -2253,17 +2424,17 @@ function SavedProgramsPanel({
             <div>
               <p className="font-bold text-white">{record.athleteName}</p>
               <p className="text-xs text-zinc-500">
-                {PROFILE_COPY[record.combatProfile].title} / {record.programSettings.lengthWeeks} weeks / {record.programSettings.scDaysPerWeek} days /{" "}
+                {PROFILE_COPY[record.combatProfile].title} / {record.programSettings.lengthWeeks} тиж. / {record.programSettings.scDaysPerWeek} дні /{" "}
                 {new Date(record.savedAt).toLocaleDateString()}
               </p>
-              <p className="mt-1 text-xs text-zinc-600">{record.programSettings.mainGoal}</p>
+              <p className="mt-1 text-xs text-zinc-600">{goalLabel(record.programSettings.mainGoal)}</p>
             </div>
             <div className="flex gap-2">
               <Button variant="secondary" onClick={() => onLoad(record)}>
-                Open
+                Відкрити
               </Button>
               <Button variant="outline" onClick={() => onDelete(record.id)}>
-                Delete
+                Видалити
               </Button>
             </div>
           </div>
@@ -2300,10 +2471,10 @@ function NavigationButtons({ prev, next }: { prev: () => void; next: () => void 
   return (
     <div className="flex flex-wrap justify-between gap-3">
       <Button variant="secondary" onClick={prev}>
-        <ChevronLeft className="h-4 w-4" /> Back
+        <ChevronLeft className="h-4 w-4" /> Назад
       </Button>
       <Button onClick={next}>
-        Continue <ChevronRight className="h-4 w-4" />
+        Далі <ChevronRight className="h-4 w-4" />
       </Button>
     </div>
   );
@@ -2337,13 +2508,128 @@ function Checklist({
                   : "border-[var(--bbp-border)] bg-[rgba(255,255,255,0.03)] text-[var(--bbp-muted)] hover:border-[var(--bbp-border-strong)] hover:text-[var(--bbp-text)]"
               }`}
             >
-              {item}
+              {checklistItemLabel(item)}
             </button>
           );
         })}
       </div>
     </Card>
   );
+}
+
+function roleLabel(role: AccountRole) {
+  return {
+    athlete: "спортсмен",
+    coach: "тренер",
+    methodology_editor: "редактор методики",
+    admin: "адміністратор",
+  }[role];
+}
+
+function languageLabel(mode: LanguageMode) {
+  return { ua: "українська", en: "англійська", ua_en: "українська + англійська" }[mode];
+}
+
+function logStatusLabel(status: TrainingLogStatus) {
+  return { planned: "заплановано", done: "виконано", modified: "змінено", skipped: "пропущено" }[status];
+}
+
+function sexLabel(sex: string) {
+  return sex === "Female" ? "жіноча" : sex === "Male" ? "чоловіча" : sex;
+}
+
+function sportLabel(sport: string) {
+  const labels: Record<string, string> = {
+    Karate: "Карате",
+    Kickboxing: "Кікбоксинг",
+    Boxing: "Бокс",
+    Wrestling: "Боротьба",
+    Sambo: "Самбо",
+    Judo: "Дзюдо",
+    "Muay Thai": "Муай-тай",
+    Other: "Інше",
+  };
+  return labels[sport] || sport;
+}
+
+function checklistItemLabel(item: string) {
+  const labels: Record<string, string> = {
+    Barbell: "Штанга",
+    Dumbbells: "Гантелі",
+    Kettlebells: "Гирі",
+    Machines: "Тренажери",
+    "Pull-up Bar": "Турнік",
+    Sled: "Санчата",
+    Bike: "Велотренажер",
+    Rower: "Гребний тренажер",
+    Treadmill: "Бігова доріжка",
+    "Med Balls": "Медболи",
+    Bands: "Еспандери",
+    "Mat Only": "Лише мат",
+    Neck: "Шия",
+    Shoulder: "Плече",
+    "Elbow/Wrist/Hand": "Лікоть, зап'ясток або кисть",
+    "Lower Back": "Поперек",
+    Hip: "Тазостегновий суглоб",
+    Knee: "Коліно",
+    "Ankle/Foot": "Гомілковостопний суглоб або стопа",
+    "Concussion History": "Струс мозку в анамнезі",
+  };
+  return labels[item] || item;
+}
+
+function phaseLabel(phase: string) {
+  const labels: Record<string, string> = {
+    "Off-season": "Міжсезоння",
+    "Pre-camp": "Перед зборами",
+    "Fight camp": "Бойові збори",
+    "In-season": "Змагальний сезон",
+    "Return to training": "Повернення до тренувань",
+  };
+  return labels[phase] || phase;
+}
+
+function goalLabel(goal: string) {
+  return goal === "Strength & Power" ? "Сила й потужність" : goal;
+}
+
+function readinessLabel(key: "sleep" | "stress" | "soreness" | "motivation") {
+  return { sleep: "Сон", stress: "Стрес", soreness: "М'язовий біль", motivation: "Мотивація" }[key];
+}
+
+function priorityLabel(id: string, fallback: string) {
+  const labels: Record<string, string> = {
+    strength: "Дефіцит сили",
+    power: "Дефіцит потужності",
+    aerobic: "Аеробний дефіцит",
+    "repeat-effort": "Повторні зусилля",
+    "movement-risk": "Ризик рухливості й стабільності",
+    recovery: "Ризик відновлення",
+    "combat-load": "Ризик бойового навантаження",
+  };
+  return labels[id] || fallback;
+}
+
+function priorityReasonUa(id: string, reason: string) {
+  let localized = reason
+    .replace("power/speed блоку", "швидкісно-силового блоку")
+    .replace("scramble", "динамічної боротьби")
+    .replace("soreness", "м'язового болю")
+    .replace("бойових сесій", "бойових тренувань")
+    .replace("1 бойових тренувань", "1 бойове тренування")
+    .replace(/([234]) бойових тренувань/, "$1 бойові тренування")
+    .replace("1 важких днів", "1 важкий день")
+    .replace(/([234]) важких днів/, "$1 важкі дні");
+  if (id === "movement-risk") {
+    PAIN_AREAS.forEach((area) => {
+      localized = localized.replace(area, checklistItemLabel(area));
+    });
+  }
+  return localized;
+}
+
+function programSummaryUa(profile: CombatProfile, athlete: AthleteProfile, settings: ProgramSettings) {
+  return `Програма для ${athlete.name || "спортсмена"}: профіль: ${PROFILE_COPY[profile].title.toLowerCase()}, тривалість: ${settings.lengthWeeks} тижнів, силові тренування на тиждень: ${settings.scDaysPerWeek}, фаза: ${phaseLabel(settings.phase).toLowerCase()}.`;
 }
 
 function buildGeminiPrompt({
@@ -2368,18 +2654,18 @@ function buildGeminiPrompt({
     ? [...firstDay.warmup, ...firstDay.powerSpeed, ...firstDay.strength, ...firstDay.accessory, ...firstDay.conditioning, ...firstDay.mobilityPrehab]
     : [];
   const firstDayText = firstDay
-    ? `${firstDay.day}: ${firstDay.sessionGoal}. Blocks: ${firstDayExercises.map((exercise) => `${exercise.name} ${exercise.sets || ""}x${exercise.reps || ""}`).join("; ")}`
-    : "No generated day yet.";
+    ? `${firstDay.day}: ${firstDay.sessionGoal}. Блоки: ${firstDayExercises.map((exercise) => `${exercise.name} ${exercise.sets || ""}x${exercise.reps || ""}`).join("; ")}`
+    : "Програму ще не створено.";
 
   return [
-    "Context: Black Bear Performance MVP for combat-sport strength and conditioning.",
-    `Role: ${userMode}. Fighter: ${athleteProfile.name || "Unnamed"}, ${athleteProfile.sport}, ${combatProfile}, level ${athleteProfile.level}.`,
-    `Program: ${programSettings.lengthWeeks} weeks, ${programSettings.scDaysPerWeek} S&C days/week, phase ${programSettings.phase}, goal ${programSettings.mainGoal}, competition ${programSettings.competitionDate || "not set"}.`,
-    `Assessment: SQ/TB ${assessment.squatOrTrapBar || "-"}, push ${assessment.benchOrPushups || "-"}, pullups ${assessment.pullups || "-"}, VJ ${assessment.verticalJump || "-"}, broad ${assessment.broadJump || "-"}, MAS ${assessment.mas || "-"}, readiness sleep/stress/soreness/motivation ${assessment.sleep}/${assessment.stress}/${assessment.soreness}/${assessment.motivation}.`,
-    `Plan summary: ${program?.summary || "Program has not been generated yet."}`,
-    `First day: ${firstDayText.slice(0, 900)}`,
-    "Answer in concise Ukrainian with English exercise names if useful. Mention that final loading decisions belong to the coach.",
-    `Question: ${question}`,
+    "Контекст: Black Bear Performance, система силової підготовки для єдиноборств.",
+    `Роль: ${roleLabel(userMode)}. Спортсмен: ${athleteProfile.name || "без імені"}, ${sportLabel(athleteProfile.sport)}, профіль ${PROFILE_COPY[combatProfile].title}, рівень ${athleteProfile.level}.`,
+    `Програма: ${programSettings.lengthWeeks} тижнів, ${programSettings.scDaysPerWeek} силових тренувань на тиждень, фаза ${phaseLabel(programSettings.phase)}, мета ${goalLabel(programSettings.mainGoal)}, змагання ${programSettings.competitionDate || "не вказано"}.`,
+    `Оцінювання: присідання/Trap Bar ${assessment.squatOrTrapBar || "-"}, жим ${assessment.benchOrPushups || "-"}, підтягування ${assessment.pullups || "-"}, вертикальний стрибок ${assessment.verticalJump || "-"}, стрибок у довжину ${assessment.broadJump || "-"}, MAS ${assessment.mas || "-"}, готовність сон/стрес/м'язовий біль/мотивація ${assessment.sleep}/${assessment.stress}/${assessment.soreness}/${assessment.motivation}.`,
+    `Опис плану: ${program?.summary || "Програму ще не створено."}`,
+    `Перший день: ${firstDayText.slice(0, 900)}`,
+    "Відповідай стисло українською. Назви вправ можна лишати англійською. Зазнач, що остаточне рішення щодо навантаження ухвалює тренер.",
+    `Запитання: ${question}`,
   ].join("\n");
 }
 
