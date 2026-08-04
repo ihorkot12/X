@@ -19,10 +19,10 @@ test("an athlete can complete the local onboarding workflow", async ({ page }, t
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
   await expect(
-    page.getByRole("heading", { name: "Сильні рішення починаються з ясної картини." }),
+    page.getByRole("heading", { name: "Підготовка бійця. Від тесту до змагань." }),
   ).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("onboarding-start.png"), fullPage: true });
-  await page.getByRole("button", { name: "Почати налаштування" }).click();
+  await page.getByRole("button", { name: "Створити програму" }).click();
   await expect(page.getByRole("heading", { name: "На який вид спорту будуємо підготовку?" })).toBeVisible();
   await page.getByText("MMA", { exact: true }).click();
   await page.getByRole("button", { name: "Продовжити" }).click();

@@ -458,24 +458,24 @@ export function WelcomeFlow({
             {currentStep === "welcome" && (
               <div className="bbwf-welcome-layout">
                 <div className="bbwf-content bbwf-content--welcome">
-                  <p className="bbwf-eyebrow">Персональний тренувальний простір</p>
+                  <p className="bbwf-eyebrow">Для спортсменів і тренерів MMA та Kyokushin</p>
                   <h1 id="bbwf-heading-welcome" ref={headingRef} tabIndex={-1}>
-                    Сильні рішення починаються з ясної картини.
+                    Підготовка бійця. Від тесту до змагань.
                   </h1>
                   <p className="bbwf-lead">
-                    Налаштуйте простір під свою ціль, роль і реальний ритм тренувань.
-                    Це займе близько двох хвилин.
+                    Оцінюємо вихідні дані, будуємо персональну програму сили й кондицій
+                    та показуємо прогрес у щоденнику спортсмена і кабінеті тренера.
                   </p>
 
                   <div className="bbwf-welcome-points" aria-label="Можливості платформи">
-                    <span><BadgeCheck aria-hidden="true" size={17} />Чіткий план</span>
-                    <span><CircleGauge aria-hidden="true" size={17} />Живий прогрес</span>
-                    <span><HeartPulse aria-hidden="true" size={17} />Контроль готовності</span>
+                    <span><BadgeCheck aria-hidden="true" size={17} />Програма до 12 тижнів</span>
+                    <span><CircleGauge aria-hidden="true" size={17} />Сила, кондиції та мобільність</span>
+                    <span><HeartPulse aria-hidden="true" size={17} />Щоденник і контроль тренера</span>
                   </div>
 
                   <div className="bbwf-welcome-actions">
                     <button className="bbwf-button bbwf-button--primary" onClick={() => selectAuthMode("register")} type="button">
-                      Почати налаштування
+                      Створити програму
                       <ArrowRight aria-hidden="true" size={18} />
                     </button>
                     <button className="bbwf-text-button" onClick={() => selectAuthMode("login")} type="button">
@@ -489,10 +489,10 @@ export function WelcomeFlow({
                   data-has-image={Boolean(heroImageSrc) || undefined}
                   style={heroStyle}
                 >
-                  {heroImageSrc && <img alt={heroImageAlt} src={heroImageSrc} />}
+                  {heroImageSrc && <img alt={heroImageAlt} decoding="async" fetchPriority="high" src={heroImageSrc} />}
                   <div className="bbwf-hero-overlay">
-                    <span className="bbwf-hero-kicker">Тренування з наміром</span>
-                    <strong>Послідовність.<br />Якість. Результат.</strong>
+                    <span className="bbwf-hero-kicker">Combat Sports Performance</span>
+                    <strong>Сила.<br />Потужність. Готовність.</strong>
                     <span className="bbwf-hero-index">01 / 05</span>
                   </div>
                 </div>

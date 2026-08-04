@@ -1148,8 +1148,8 @@ export default function App() {
   if (!account) {
     return (
       <WelcomeFlow
-        heroImageSrc="/assets/onboarding/combat-athlete-welcome.webp"
-        heroImageAlt="Боєць із перебинтованими руками у тренувальному просторі Black Bear Performance"
+        heroImageSrc="/assets/onboarding/combat-performance-hero.webp"
+        heroImageAlt="Боєць виконує вибуховий кидок медболу в центрі спортивної підготовки"
         defaultValue={{
           authMode,
           displayName: authForm.name,
