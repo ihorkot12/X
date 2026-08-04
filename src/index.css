@@ -1,33 +1,33 @@
-@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&family=Manrope:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Manrope", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Cascadia Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --font-display: "Manrope", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
 }
 
 @layer base {
   :root {
     color-scheme: dark;
-    --bbp-bg: #111210;
-    --bbp-bg-secondary: #151613;
-    --bbp-panel: #191a17;
-    --bbp-panel-strong: #20211d;
-    --bbp-panel-soft: #141512;
-    --bbp-border: rgba(238, 229, 210, 0.14);
-    --bbp-border-strong: rgba(198, 161, 91, 0.44);
-    --bbp-text: #f1eadb;
-    --bbp-muted: #b8b0a2;
-    --bbp-muted-strong: #989184;
-    --bbp-accent: #c6a15b;
-    --bbp-accent-strong: #d7b66f;
-    --bbp-accent-soft: rgba(198, 161, 91, 0.15);
-    --bbp-accent-ring: rgba(215, 182, 111, 0.48);
-    --bbp-success: #73b98d;
-    --bbp-success-soft: rgba(115, 185, 141, 0.14);
-    --bbp-danger: #db7d73;
-    --bbp-danger-soft: rgba(219, 125, 115, 0.14);
+    --bbp-bg: #06080d;
+    --bbp-bg-secondary: #0a0e15;
+    --bbp-panel: #0d131d;
+    --bbp-panel-strong: #121b28;
+    --bbp-panel-soft: #090e16;
+    --bbp-border: rgba(146, 169, 203, 0.18);
+    --bbp-border-strong: rgba(44, 122, 255, 0.72);
+    --bbp-text: #f2f6ff;
+    --bbp-muted: #a9b6c9;
+    --bbp-muted-strong: #8190a7;
+    --bbp-accent: #126bff;
+    --bbp-accent-strong: #66a0ff;
+    --bbp-accent-soft: rgba(18, 107, 255, 0.16);
+    --bbp-accent-ring: rgba(90, 157, 255, 0.62);
+    --bbp-success: #35cf86;
+    --bbp-success-soft: rgba(53, 207, 134, 0.14);
+    --bbp-danger: #f25d6a;
+    --bbp-danger-soft: rgba(242, 93, 106, 0.14);
   }
 
   * {
@@ -70,7 +70,7 @@
 
   ::selection {
     background-color: var(--bbp-accent);
-    color: #17140d;
+    color: #f7fbff;
   }
 
   :where(button, input, textarea, a, [tabindex]:not([tabindex="-1"])):focus-visible {

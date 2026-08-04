@@ -15,7 +15,7 @@ function createParams(overrides: {
   athleteProfile?: Partial<AthleteProfile>;
   programSettings?: Partial<ProgramSettings>;
   assessment?: Partial<Assessment>;
-} = {}) {
+} = {}): Parameters<typeof generateProgram>[0] {
   return {
     combatProfile: overrides.combatProfile ?? "hybrid",
     combatLoad: {
@@ -143,6 +143,19 @@ describe("generateProgram", () => {
 
     expect(firstDay.sessionGoal).toBe(goal);
     expect(firstDay.coachNotesEn).toContain(conflictNote);
+  });
+
+  it("uses the discipline contract to keep Kyokushin programs striker-specific", () => {
+    const program = generateProgram(createParams({
+      combatProfile: "hybrid",
+      athleteProfile: { sport: "Kyokushin Karate" },
+    }));
+
+    expect(program.summary).toContain("Кіокушинкай карате");
+    expect(program.weeks[0].days[0].sessionGoal).toBe(
+      "Lower strength, acceleration, elastic stiffness",
+    );
+    expect(program.weeks[0].days[0].coachNotesEn).toContain("Do not crush the legs");
   });
 
   it("uses fight-camp focus and safe bodyweight fallbacks", () => {

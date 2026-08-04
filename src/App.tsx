@@ -25,6 +25,7 @@ import {
 import {
   Assessment,
   AthleteProfile,
+  CombatDiscipline,
   CombatLoad,
   CombatProfile,
   GeneratedProgram,
@@ -59,7 +60,7 @@ import { SheetPreview } from "./components/sheets/SheetPreview";
 import { Button, Card, Input, SegmentedControl } from "./components/ui/Base";
 import { WelcomeFlow, type WelcomeFlowData } from "./components/onboarding/WelcomeFlow";
 
-const SPORTS = ["MMA", "Karate", "Kickboxing", "Boxing", "Wrestling", "Sambo", "Judo", "BJJ", "Muay Thai", "Other"];
+const SPORTS: AthleteProfile["sport"][] = ["Kyokushin Karate", "MMA"];
 const EQUIPMENT = ["Barbell", "Dumbbells", "Kettlebells", "Machines", "Pull-up Bar", "Sled", "Bike", "Rower", "Treadmill", "Med Balls", "Bands", "Mat Only"];
 const PAIN_AREAS = ["Neck", "Shoulder", "Elbow/Wrist/Hand", "Lower Back", "Hip", "Knee", "Ankle/Foot", "Concussion History"];
 const ACCOUNT_STORAGE_KEY = "bbp_accounts_v1";
@@ -70,6 +71,10 @@ const TRAINING_LOG_STORAGE_KEY = "bbp_training_logs_v1";
 const TEAM_STORAGE_KEY = "bbp_teams_v1";
 const MEMBERSHIP_STORAGE_KEY = "bbp_team_memberships_v1";
 const TEST_HISTORY_STORAGE_KEY = "bbp_test_history_v1";
+
+function isSupportedSport(value: string): value is CombatDiscipline {
+  return SPORTS.includes(value as CombatDiscipline);
+}
 
 type AuthMode = "login" | "register";
 type StoredAccount = UserAccount & { serverRole?: AccountRole };
@@ -106,17 +111,17 @@ function accountMetadata(account: StoredAccount): StoredAccount {
 const PROFILE_COPY: Record<CombatProfile, { title: string; summary: string; emphasis: string[] }> = {
   grappler: {
     title: "Борець",
-    summary: "Боротьба, самбо, дзюдо, BJJ або MMA з акцентом на боротьбу.",
+    summary: "MMA з акцентом на боротьбу, клінч, контроль суперника й роботу в партері.",
     emphasis: ["Задня ланка", "Хват і шия", "Перенесення й ізометрія", "Повторні зусилля"],
   },
   striker: {
     title: "Ударник",
-    summary: "Бокс, карате, кікбоксинг, муай-тай або боєць із акцентом на ударну техніку.",
+    summary: "Кіокушинкай карате або MMA з акцентом на ударну техніку, стійку й роботу ніг.",
     emphasis: ["Вибухова сила", "Ротаційні кидки", "Робота ніг", "Аеробна база"],
   },
   hybrid: {
     title: "Ударник + борець",
-    summary: "MMA, бойове самбо або змішаний профіль із обома типами навантаження.",
+    summary: "MMA зі змішаним навантаженням: ударна робота, боротьба, клінч і переходи.",
     emphasis: ["Збалансований обсяг", "Передавання зусилля", "Бойова витривалість", "Відновлення"],
   },
 };
@@ -222,6 +227,12 @@ export default function App() {
   }, [step]);
 
   const profileSummary = useMemo(() => PROFILE_COPY[combatProfile], [combatProfile]);
+  const availableCombatProfiles = useMemo<CombatProfile[]>(
+    () => athleteProfile.sport === "Kyokushin Karate"
+      ? ["striker"]
+      : ["striker", "grappler", "hybrid"],
+    [athleteProfile.sport],
+  );
   const priorityScores = useMemo(
     () => scorePriorities({ combatProfile, combatLoad, athleteProfile, assessment }),
     [assessment, athleteProfile, combatLoad, combatProfile],
@@ -441,6 +452,7 @@ export default function App() {
     setUserMode(role);
     setAuthMode(nextMode);
     setAuthForm({ name: data.displayName, email: data.email, password: data.password });
+    setAthleteProfile((current) => ({ ...current, sport: data.discipline }));
     if (data.sessionsPerWeek) {
       const scDaysPerWeek = Math.min(data.sessionsPerWeek, 4) as ProgramSettings["scDaysPerWeek"];
       const mainGoalByIntent: Record<NonNullable<WelcomeFlowData["intent"]>, string> = {
@@ -588,6 +600,12 @@ export default function App() {
 
   const updateAthleteProfile = (patch: Partial<AthleteProfile>) => {
     setAthleteProfile((current) => ({ ...current, ...patch }));
+  };
+
+  const updateSport = (value: string) => {
+    if (!isSupportedSport(value)) return;
+    updateAthleteProfile({ sport: value });
+    if (value === "Kyokushin Karate") setCombatProfile("striker");
   };
 
   const updateProgramSettings = (patch: Partial<ProgramSettings>) => {
@@ -1339,11 +1357,11 @@ export default function App() {
                   <SegmentedControl
                     label="Вид спорту"
                     value={athleteProfile.sport}
-                    onChange={(value) => updateAthleteProfile({ sport: value })}
+                    onChange={updateSport}
                     options={SPORTS.map((sport) => ({ label: sportLabel(sport), value: sport }))}
                   />
                   <div className="grid gap-3 md:grid-cols-3">
-                    {(Object.keys(PROFILE_COPY) as CombatProfile[]).map((profile) => {
+                    {availableCombatProfiles.map((profile) => {
                       const active = combatProfile === profile;
                       return (
                         <button

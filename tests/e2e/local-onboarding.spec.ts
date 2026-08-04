@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("an athlete can complete the local onboarding workflow", async ({ page }) => {
+test("an athlete can complete the local onboarding workflow", async ({ page }, testInfo) => {
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
   const failedCoreRequests: string[] = [];
@@ -21,7 +21,11 @@ test("an athlete can complete the local onboarding workflow", async ({ page }) =
   await expect(
     page.getByRole("heading", { name: "Сильні рішення починаються з ясної картини." }),
   ).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("onboarding-start.png"), fullPage: true });
   await page.getByRole("button", { name: "Почати налаштування" }).click();
+  await expect(page.getByRole("heading", { name: "На який вид спорту будуємо підготовку?" })).toBeVisible();
+  await page.getByText("MMA", { exact: true }).click();
+  await page.getByRole("button", { name: "Продовжити" }).click();
   await page.getByText("Покращити результат", { exact: true }).click();
   await page.locator('label:has(input[name="sessionsPerWeek"][value="4"])').click();
   await page.getByRole("button", { name: "Продовжити" }).click();
@@ -38,6 +42,7 @@ test("an athlete can complete the local onboarding workflow", async ({ page }) =
   await expect(page.getByRole("heading", { name: "Бойовий профіль" })).toBeVisible();
   await expect(page.getByText("Тижневе бойове навантаження", { exact: true })).toBeVisible();
   await expect(page.getByText("8 тиж. / 4 дні", { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("onboarding-complete.png"), fullPage: true });
 
   const viewportFits = await page.evaluate(
     () => document.documentElement.scrollWidth <= window.innerWidth + 1,

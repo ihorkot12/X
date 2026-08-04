@@ -10,6 +10,7 @@ import {
   ProgramWeek,
 } from "../types";
 import { prescribeBestExercise, prescribeExercise } from "./exerciseLibrary";
+import { getCombatModule, normalizeCombatProfile } from "./combatModules";
 import { createGeneratedLifecycle, createProgramMethodologyMetadata } from "./methodology";
 
 type GenerateProgramParams = {
@@ -47,6 +48,8 @@ const PROFILE_LABELS: Record<CombatProfile, string> = {
 
 export function generateProgram(params: GenerateProgramParams): GeneratedProgram {
   const { combatProfile, combatLoad, athleteProfile, programSettings, assessment } = params;
+  const effectiveProfile = normalizeCombatProfile(athleteProfile.sport, combatProfile);
+  const combatModule = getCombatModule(athleteProfile.sport);
   const weeks: ProgramWeek[] = [];
 
   for (let week = 1; week <= programSettings.lengthWeeks; week += 1) {
@@ -58,7 +61,7 @@ export function generateProgram(params: GenerateProgramParams): GeneratedProgram
       generateDay({
         dayIndex: index + 1,
         template,
-        combatProfile,
+        combatProfile: effectiveProfile,
         combatLoad,
         athleteProfile,
         week,
@@ -78,7 +81,7 @@ export function generateProgram(params: GenerateProgramParams): GeneratedProgram
     });
   }
 
-  const summary = `${PROFILE_LABELS[combatProfile]} program for ${athleteProfile.name || "Athlete"}: ${programSettings.lengthWeeks} weeks, ${programSettings.scDaysPerWeek} S&C days/week, ${programSettings.phase}.`;
+  const summary = `${combatModule.labelUa} · ${PROFILE_LABELS[effectiveProfile]} · ${athleteProfile.name || "Спортсмен"}: ${programSettings.lengthWeeks} тиж., ${programSettings.scDaysPerWeek} S&C дні/тиж., ${programSettings.phase}.`;
 
   return {
     summary,

@@ -1,5 +1,6 @@
 export type UserMode = "athlete" | "coach" | "admin";
 export type LanguageMode = "ua" | "en" | "ua_en";
+export type CombatDiscipline = "Kyokushin Karate" | "MMA";
 export type CombatProfile = "grappler" | "striker" | "hybrid";
 export type ProgramLength = 4 | 8 | 12;
 export type SCDaysPerWeek = 2 | 3 | 4;
@@ -27,7 +28,7 @@ export interface AthleteProfile {
   sex: string;
   heightCm: number | "";
   weightKg: number | "";
-  sport: string;
+  sport: CombatDiscipline;
   level: string;
   strengthTrainingAge: string;
   equipment: string[];

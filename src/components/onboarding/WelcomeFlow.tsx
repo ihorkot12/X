@@ -15,6 +15,8 @@ import {
   LockKeyhole,
   Mail,
   ShieldCheck,
+  Shield,
+  Swords,
   Target,
   UserRound,
   UsersRound,
@@ -32,6 +34,7 @@ import "./welcomeFlow.css";
 
 export type WelcomeFlowStep =
   | "welcome"
+  | "discipline"
   | "intent"
   | "details"
   | "role"
@@ -46,10 +49,13 @@ export type TrainingIntent =
 
 export type WelcomeFlowRole = "athlete" | "coach";
 
+export type WelcomeFlowDiscipline = "Kyokushin Karate" | "MMA";
+
 export type WelcomeFlowAuthMode = "login" | "register";
 
 export interface WelcomeFlowData {
   authMode: WelcomeFlowAuthMode;
+  discipline: WelcomeFlowDiscipline;
   intent: TrainingIntent | null;
   sessionsPerWeek: 2 | 3 | 4 | 5 | null;
   displayName: string;
@@ -85,6 +91,7 @@ export interface WelcomeFlowProps {
 
 const EMPTY_DATA: WelcomeFlowData = {
   authMode: "register",
+  discipline: "Kyokushin Karate",
   intent: null,
   sessionsPerWeek: null,
   displayName: "",
@@ -94,8 +101,32 @@ const EMPTY_DATA: WelcomeFlowData = {
   role: null,
 };
 
+const DISCIPLINES: ReadonlyArray<{
+  value: WelcomeFlowDiscipline;
+  label: string;
+  description: string;
+  profile: string;
+  icon: typeof Shield;
+}> = [
+  {
+    value: "Kyokushin Karate",
+    label: "Kyokushin Karate",
+    description: "Ударна потужність, швидкість, робота ніг і витривалість для повноконтактного куміте.",
+    profile: "Ударний модуль",
+    icon: Shield,
+  },
+  {
+    value: "MMA",
+    label: "MMA",
+    description: "Сила, вибуховість і кондиції з урахуванням ударної роботи та боротьби.",
+    profile: "Змішаний модуль",
+    icon: Swords,
+  },
+];
+
 const REGISTER_STEPS: readonly WelcomeFlowStep[] = [
   "welcome",
+  "discipline",
   "intent",
   "details",
   "role",
@@ -106,6 +137,7 @@ const LOGIN_STEPS: readonly WelcomeFlowStep[] = ["welcome", "details"];
 
 const STEP_LABELS: Record<WelcomeFlowStep, string> = {
   welcome: "Початок",
+  discipline: "Дисципліна",
   intent: "Намір",
   details: "Профіль",
   role: "Роль",
@@ -162,7 +194,7 @@ const ROLE_COPY: Record<
 };
 
 type FieldErrors = Partial<
-  Record<"intent" | "sessionsPerWeek" | "displayName" | "email" | "password" | "acceptedTerms" | "role" | "submit", string>
+  Record<"discipline" | "intent" | "sessionsPerWeek" | "displayName" | "email" | "password" | "acceptedTerms" | "role" | "submit", string>
 >;
 
 function normalizeData(value?: Partial<WelcomeFlowData>): WelcomeFlowData {
@@ -271,11 +303,15 @@ export function WelcomeFlow({
       : { authMode };
     const nextData = updateData(loginOnlyPatch);
     if (authMode === "login") onSignIn?.();
-    goToStep(authMode === "login" ? "details" : "intent", nextData);
+    goToStep(authMode === "login" ? "details" : "discipline", nextData);
   };
 
   const validateCurrentStep = (): boolean => {
     const nextErrors: FieldErrors = {};
+
+    if (currentStep === "discipline" && !DISCIPLINES.some((item) => item.value === data.discipline)) {
+      nextErrors.discipline = "Оберіть бойову дисципліну.";
+    }
 
     if (currentStep === "intent") {
       if (!data.intent) nextErrors.intent = "Оберіть головну ціль.";
@@ -461,6 +497,47 @@ export function WelcomeFlow({
                   </div>
                 </div>
               </div>
+            )}
+
+            {currentStep === "discipline" && (
+              <form className="bbwf-content" onSubmit={handleNext} noValidate>
+                <header className="bbwf-stage-header">
+                  <p className="bbwf-eyebrow">Бойова дисципліна</p>
+                  <h1 id="bbwf-heading-discipline" ref={headingRef} tabIndex={-1}>
+                    На який вид спорту будуємо підготовку?
+                  </h1>
+                  <p>Починаємо з одного модуля. Після реєстрації ви заповните детальні дані й тести.</p>
+                </header>
+
+                <fieldset className="bbwf-fieldset" aria-describedby={errors.discipline ? "bbwf-discipline-error" : undefined}>
+                  <legend className="bbwf-sr-only">Бойова дисципліна</legend>
+                  <div className="bbwf-choice-grid">
+                    {DISCIPLINES.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <label className="bbwf-choice" data-selected={data.discipline === option.value || undefined} key={option.value}>
+                          <input
+                            checked={data.discipline === option.value}
+                            name="discipline"
+                            onChange={() => updateData({ discipline: option.value })}
+                            type="radio"
+                            value={option.value}
+                          />
+                          <span className="bbwf-choice-icon"><Icon aria-hidden="true" size={20} strokeWidth={1.7} /></span>
+                          <span className="bbwf-choice-copy">
+                            <strong>{option.label}</strong>
+                            <small>{option.description}</small>
+                          </span>
+                          <span className="bbwf-choice-check" aria-hidden="true"><Check size={13} /></span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {errors.discipline && <p className="bbwf-error" id="bbwf-discipline-error" role="alert">{errors.discipline}</p>}
+                </fieldset>
+
+                <StepActions onBack={goBack} />
+              </form>
             )}
 
             {currentStep === "intent" && (
