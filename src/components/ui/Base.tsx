@@ -57,13 +57,13 @@ export const Button = ({
 }: ButtonProps) => {
   const variants = {
     primary:
-      "border border-[var(--bbp-accent-strong)] bg-[var(--bbp-accent)] text-[#18140d] hover:bg-[var(--bbp-accent-strong)]",
+      "border border-[var(--bbp-accent-strong)] bg-[var(--bbp-accent)] text-[#f7fbff] hover:bg-[var(--bbp-accent-strong)]",
     secondary:
-      "border border-[var(--bbp-border)] bg-[var(--bbp-panel-strong)] text-[var(--bbp-text)] hover:border-[var(--bbp-border-strong)] hover:bg-[#272821]",
+      "border border-[var(--bbp-border)] bg-[var(--bbp-panel-strong)] text-[var(--bbp-text)] hover:border-[var(--bbp-border-strong)] hover:bg-[#172235]",
     outline:
       "border border-[var(--bbp-border)] bg-transparent text-[var(--bbp-muted)] hover:border-[var(--bbp-border-strong)] hover:bg-[var(--bbp-accent-soft)] hover:text-[var(--bbp-text)]",
     danger:
-      "border border-[var(--bbp-danger)] bg-[var(--bbp-danger-soft)] text-[#f0aaa2] hover:bg-[rgba(219,125,115,0.2)]",
+      "border border-[var(--bbp-danger)] bg-[var(--bbp-danger-soft)] text-[#ffc0c7] hover:bg-[rgba(242,93,106,0.2)]",
   };
 
   return (
